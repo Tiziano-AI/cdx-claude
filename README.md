@@ -13,15 +13,16 @@ Prerequisites:
 - Node-compatible Claude Agent SDK runtime. The SDK bundled Claude Code executable is used when no local `claude` executable or `CDX_CLAUDE_CODE_EXECUTABLE` override is found.
 - Anthropic-supported Claude Code or Claude Agent SDK authentication for the user running Codex.
 - Git for patch modes.
-- macOS for supported `patch_autonomous` sandbox proof in v0.1.0.
+- macOS for supported `patch_autonomous` sandbox proof in v0.1.1.
 
 Install the public marketplace and plugin from GitHub after the release tag exists:
 
 ```bash
-codex plugin marketplace add Tiziano-AI/cdx-claude --ref v0.1.0
+codex plugin marketplace add Tiziano-AI/cdx-claude --ref v0.1.1
 ```
 
-The marketplace entry installs the `cdx-claude` plugin from the repository `plugin/` directory. The installed plugin launches a pinned npm runtime through `./bin/cdx-claude`, so first use may download `cdx-claude@0.1.0` with npm tooling.
+The marketplace entry installs the `cdx-claude` plugin from the repository `plugin/` directory. The installed plugin launches a pinned npm runtime through `./bin/cdx-claude`, so first use downloads `cdx-claude@0.1.1` with npm tooling. Production Codex plugin use requires that package to be published on npm; `CDX_CLAUDE_NPM_SPEC` is only a release-candidate proof override for local tarballs.
+If a previous `cdx-claude@local-personal` prototype is installed, disable or uninstall it before runtime proof. The active MCP row should resolve to the public Git marketplace cache, not `local-personal`.
 
 For installed plugin use with API or cloud-provider auth, put the Claude auth variables in a local dotenv file and expose only the file path to Codex:
 
@@ -36,8 +37,8 @@ Then set `CDX_CLAUDE_AUTH_ENV_FILE=/Users/you/.secrets/cdx-claude.env` in the Co
 For CLI-only debugging after npm publish:
 
 ```bash
-npx -y cdx-claude@0.1.0 --help
-npx -y cdx-claude@0.1.0 doctor
+npx -y cdx-claude@0.1.1 --help
+npx -y cdx-claude@0.1.1 doctor
 ```
 
 ## MCP tools
@@ -58,9 +59,10 @@ npx -y cdx-claude@0.1.0 doctor
 
 - `research`: read-only Claude research inside the target root.
 - `patch`: isolated git worktree edits, no shell.
-- `patch_autonomous`: isolated git worktree edits plus Bash through Claude Code native sandboxing. v0.1.0 supports this mode on macOS after a fresh sandbox canary proof.
+- `patch_autonomous`: isolated git worktree edits plus Bash through Claude Code native sandboxing. v0.1.1 supports this mode on macOS after a fresh sandbox canary proof.
 
 Every `claude_delegate_start` request requires an absolute `cwd` and an explicit `agent_role`. Call `claude_delegate_roles` first to list packaged roles. Jobs use no web tools unless `allow_web` is true.
+Starting jobs, running canaries, selecting a custom `model`, setting `allow_web: true`, or raising `max_budget_usd` above the default are operator-authorized actions. Codex should use them only when the user has authorized the delegation, web access, model choice, or higher SDK cost-estimate guard for the current task.
 
 Example start payload:
 
@@ -85,6 +87,8 @@ Job state lives under the operator's Codex home by default:
 
 Each job writes `job.json`, `events.jsonl`, `result.md`, optional `diff.patch`, logs, and `receipt.json`.
 Public status, list, result, diff, and canary responses omit the internal worker identity hash and full appended role prompt. Public event tails strip cdx-claude worker control identity keys such as `pid`, `worker_pid`, `worker_token`, and `worker_token_hash`. The raw worker token is passed only through the private worker environment and is not persisted.
+
+The ledger is a local operator data store, not a private per-thread vault. Any enabled Codex session that can call the `cdx-claude` MCP tools can list jobs and inspect prior cdx-claude prompts, event tails, results, diffs, and logs until those ledgers are cleaned up. Use `claude_delegate_cleanup` after accepting or rejecting a job when prior job material should not remain visible to future Codex sessions.
 
 `claude_delegate_stop` records `stopping`, aborts the detached worker's SDK query, and lets the worker or stale recovery write terminal `stopped` or `stale`. Cleanup is denied while a job is `starting`, `running`, or `stopping`.
 
@@ -118,14 +122,16 @@ Create a local npm tarball for plugin-launcher proof before publishing:
 
 ```bash
 pnpm pack --pack-destination /tmp/cdx-claude-pack
-CDX_CLAUDE_NPM_SPEC=/tmp/cdx-claude-pack/cdx-claude-0.1.0.tgz plugin/bin/cdx-claude --help
+CDX_CLAUDE_NPM_SPEC=/tmp/cdx-claude-pack/cdx-claude-0.1.1.tgz plugin/bin/cdx-claude --help
 ```
 
 Run a direct MCP tool-list proof through the plugin launcher:
 
 ```bash
-CDX_CLAUDE_NPM_SPEC=/tmp/cdx-claude-pack/cdx-claude-0.1.0.tgz pnpm mcp:tools-proof
+CDX_CLAUDE_NPM_SPEC=/tmp/cdx-claude-pack/cdx-claude-0.1.1.tgz pnpm mcp:tools-proof
 ```
+
+Unset `CDX_CLAUDE_NPM_SPEC` for production installed-plugin proof after npm publish. The final public runtime proof must exercise the npm package selected by `plugin/bin/cdx-claude`, not a local tarball override.
 
 ## Release
 

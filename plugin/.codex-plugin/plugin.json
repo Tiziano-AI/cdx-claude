@@ -1,6 +1,6 @@
 {
   "name": "cdx-claude",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Non-blocking Codex delegation to local Claude Code through a narrow persistent MCP wrapper.",
   "author": {
     "name": "Tiziano AI",
@@ -36,6 +36,6 @@
       "Start a Claude patch delegate in an isolated worktree and show me the diff.",
       "Run the CDX Claude doctor and explain any blockers."
     ],
-    "brandColor": "#7C3AED"
+    "brandColor": "#0F766E"
   }
 }

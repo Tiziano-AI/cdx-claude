@@ -208,7 +208,7 @@ function claudeEnvironment(jobId: string): Record<string, string | undefined> {
     LOGNAME: process.env.LOGNAME,
     SHELL: process.env.SHELL,
     CLAUDE_CODE_DISABLE_AUTO_MEMORY: "1",
-    CLAUDE_AGENT_SDK_CLIENT_APP: "cdx-claude/0.1.0"
+    CLAUDE_AGENT_SDK_CLIENT_APP: "cdx-claude/0.1.1"
   };
 }
 

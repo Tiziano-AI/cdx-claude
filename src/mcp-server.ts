@@ -242,7 +242,7 @@ export async function serveMcp(): Promise<void> {
   const server = new Server(
     {
       name: "cdx-claude",
-      version: "0.1.0"
+      version: "0.1.1"
     },
     {
       capabilities: {

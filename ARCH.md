@@ -37,7 +37,7 @@ The MCP server is short-lived request handling. It validates request payloads, w
 
 The public GitHub repository is `Tiziano-AI/cdx-claude`. It owns both the npm runtime package and a Codex marketplace file at `.agents/plugins/marketplace.json`. The marketplace entry points Codex at the installable plugin subdirectory `./plugin` through a Git subdirectory source.
 
-The installed plugin is cache-relative. `plugin/.mcp.json` launches `./bin/cdx-claude` with arguments `mcp serve` and `cwd: "."`. `plugin/bin/cdx-claude` is a small executable launcher that runs the version-pinned npm package `cdx-claude@0.1.0`. The launcher accepts `CDX_CLAUDE_NPM_SPEC` for release-candidate proof against a local `pnpm pack` tarball before npm publish. The launcher passes only an allowlisted environment to npm and may pass `CDX_CLAUDE_AUTH_ENV_FILE`, which is a path to a local auth dotenv file, not an auth secret. The plugin package does not commit a bundled Anthropic SDK artifact.
+The installed plugin is cache-relative. `plugin/.mcp.json` launches `./bin/cdx-claude` with arguments `mcp serve` and `cwd: "."`. `plugin/bin/cdx-claude` is a small executable launcher that runs the version-pinned npm package `cdx-claude@0.1.1`. The launcher accepts `CDX_CLAUDE_NPM_SPEC` only for release-candidate proof against a local `pnpm pack` tarball before npm publish. Production Codex runtime leaves that override unset so the launcher resolves the public npm package. The launcher passes only an allowlisted environment to npm and may pass `CDX_CLAUDE_AUTH_ENV_FILE`, which is a path to a local auth dotenv file, not an auth secret. The plugin package does not commit a bundled Anthropic SDK artifact.
 
 The npm package is the runtime owner. It ships the TypeScript build in `dist/`, the embedded delegate roles in `roles/`, and one public binary named `cdx-claude`. The hidden worker command is `cdx-claude __worker` and is not listed in help.
 
@@ -75,6 +75,7 @@ The CLI mirrors the MCP surface for local debugging: `doctor`, `roles`, `jobs st
 Public request decoding is strict. No-input tools reject extra MCP arguments and extra CLI flags or positionals. Single-job CLI commands reject trailing positional arguments instead of ignoring them.
 
 Public job responses use a `JobView` projection. `job.json` persists a worker-token hash and the full appended role prompt for recovery and execution, but the raw worker token exists only in the private worker environment. `JobView` omits `worker_token_hash` and `agent_prompt` from `start`, `list`, `status`, `result`, `diff`, and `sandbox_canary` responses. Event tails are not a DLP boundary; they return Claude SDK event metadata as product data, but their public projection strips cdx-claude worker control identity keys such as `pid`, `worker_pid`, `worker_token`, and `worker_token_hash`.
+The ledger is global local operator state. Any enabled Codex session that can call the wrapper tools can list and inspect persisted cdx-claude jobs until cleanup removes the ledger. `claude_delegate_cleanup` is the retention control after Codex accepts or rejects a job.
 
 ## Request and ledger contracts
 
@@ -90,6 +91,7 @@ Public job responses use a `JobView` projection. `job.json` persists a worker-to
 - `max_budget_usd`: optional SDK cost-estimate guard. It is not an Anthropic Console billing claim.
 
 If `max_budget_usd` is omitted, `cdx-claude` sets a default SDK guard of `1`. Requests above `100` are rejected. The guard bounds SDK-reported usage for public tool calls; it is not a provider billing statement.
+Starting jobs, running sandbox canaries, enabling web tools, selecting custom models, and raising `max_budget_usd` above the default are operator-authorized actions. The product enforces strict payloads and mode boundaries; it does not add a second interactive approval layer inside the MCP server.
 
 `cwd` must resolve to a git project or worktree root. `cdx-claude` denies filesystem root, the operator home directory, cdx-claude state, Codex state, broad user-control directories, and common credential roots such as `.codex`, `.claude`, `.config`, `.npm`, `.secrets`, `.ssh`, `.aws`, `.azure`, `.gcloud`, `.docker`, `.kube`, `.gnupg`, `.claude.json`, and `.gemini` before ledger or worker creation.
 
@@ -103,7 +105,7 @@ A per-job lock owns status/event transitions. Terminal statuses are immutable. A
 
 `patch` creates a detached git worktree under the ledger worktree root from the target repository `HEAD`. Claude may read, edit, and write inside that worktree only. Shell is not available.
 
-`patch_autonomous` creates the same detached worktree as `patch`, enables Claude Code native sandboxing for Bash, and passes a scrubbed environment to the detached worker and SDK. Shell commands run only when SDK sandboxing is enabled with `failIfUnavailable: true`, `autoAllowBashIfSandboxed: true`, and `allowUnsandboxedCommands: false`. v0.1.0 does not claim network containment; network policy remains future work because Claude Code and provider access require network paths.
+`patch_autonomous` creates the same detached worktree as `patch`, enables Claude Code native sandboxing for Bash, and passes a scrubbed environment to the detached worker and SDK. Shell commands run only when SDK sandboxing is enabled with `failIfUnavailable: true`, `autoAllowBashIfSandboxed: true`, and `allowUnsandboxedCommands: false`. v0.1.1 does not claim network containment; network policy remains future work because Claude Code and provider access require network paths.
 
 The plugin launcher also uses an allowlisted environment when invoking npm. It forwards only process basics, cdx-claude configuration, and an empty npm userconfig path; it does not pass the full Codex MCP process environment through to npm or the runtime.
 
@@ -119,7 +121,7 @@ Every Claude delegate runs with a task-specific system prompt selected from the 
 
 ## Release identity
 
-One version controls the release: npm package version, plugin manifest version, plugin launcher npm spec, marketplace `ref`, and Git tag all match. The v0.1.0 public release supports macOS first. Linux and Windows remain experimental until direct Codex plugin proof and Claude sandbox proof exist on those platforms.
+One version controls the release: npm package version, plugin manifest version, plugin launcher npm spec, marketplace `ref`, and Git tag all match. The v0.1.1 public release supports macOS first. Linux and Windows remain experimental until direct Codex plugin proof and Claude sandbox proof exist on those platforms.
 
 ## Generated artifact exceptions
 

@@ -72,7 +72,7 @@ export async function startJob(request: StartRequest): Promise<JobView> {
     throw new UserVisibleError("cwd must be an absolute path.");
   }
   if (request.mode === "patch_autonomous" && !sandboxPlatformSupported()) {
-    throw new UserVisibleError("patch_autonomous is supported only on macOS in cdx-claude v0.1.0.", {
+    throw new UserVisibleError("patch_autonomous is supported only on macOS in cdx-claude v0.1.1.", {
       code: "sandbox_platform_unsupported",
       field: "mode",
       recoverable: true,

@@ -28,10 +28,14 @@ test("plugin MCP config uses the installed cache-relative launcher", async () =>
 test("plugin package has one executable public binary and no source-anchored launch paths", async () => {
   const packageRaw = await readFile("package.json", "utf8");
   const packageJson: unknown = JSON.parse(packageRaw);
-  if (typeof packageJson !== "object" || packageJson === null || !("bin" in packageJson)) {
+  if (typeof packageJson !== "object" || packageJson === null || !("bin" in packageJson) || !("version" in packageJson)) {
     throw new Error("missing package bin");
   }
   assert.deepEqual(packageJson.bin, { "cdx-claude": "dist/src/cli.js" });
+  const packageVersion = packageJson.version;
+  if (typeof packageVersion !== "string" || packageVersion.length === 0) {
+    throw new Error("missing package version");
+  }
 
   const launcher = path.join("plugin", "bin", "cdx-claude");
   const stats = await stat(launcher);
@@ -39,7 +43,7 @@ test("plugin package has one executable public binary and no source-anchored lau
   assert.equal(stats.isFile(), true);
   const launcherContent = await readFile(launcher, "utf8");
   assert.ok(launcherContent.length < 10_000);
-  assert.match(launcherContent, /cdx-claude@0\.1\.0/);
+  assert.match(launcherContent, new RegExp(`cdx-claude@${packageVersion.replaceAll(".", "\\.")}`));
   assert.match(launcherContent, /CDX_CLAUDE_NPM_SPEC/);
   assert.match(launcherContent, /CDX_CLAUDE_AUTH_ENV_FILE/);
   assert.match(launcherContent, /npm/);

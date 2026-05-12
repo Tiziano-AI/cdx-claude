@@ -18,6 +18,8 @@ Use this skill when Codex needs Claude Code as a servant delegate.
 - Inspect with `claude_delegate_status`, `claude_delegate_tail`, `claude_delegate_result`, and `claude_delegate_diff`.
 - Apply no patch until Codex has read the diff and validated it.
 - Treat canary proof as side-effect proof from `claude_delegate_result`, not marker text alone.
+- Treat `claude_delegate_start`, `claude_delegate_sandbox_canary`, `allow_web: true`, custom `model`, and `max_budget_usd` above the default as actions requiring explicit user authorization in the current task.
+- Treat the ledger as shared local operator state: any enabled Codex session can inspect prior cdx-claude jobs until cleanup removes them.
 
 ## Required start payload
 
@@ -38,6 +40,7 @@ Always pass an absolute `cwd` for the target repository or workspace:
 `cdx-claude` does not redact prompts, logs, events, diffs, or results. It moves product data between Codex, local Claude Code, and the local ledger.
 The raw cdx-claude worker token is private control material and is not persisted or returned.
 For installed plugin auth, configure `CDX_CLAUDE_AUTH_ENV_FILE` to point at a local Claude auth dotenv file instead of passing auth secrets through the plugin launcher environment.
+`CDX_CLAUDE_NPM_SPEC` is a release-candidate tarball proof override only. Do not set it for production installed-plugin proof after npm publish.
 
 ## Cleanup
 
