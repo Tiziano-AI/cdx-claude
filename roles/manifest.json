@@ -1,0 +1,528 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-05-11T02:10:49.357Z",
+  "upstream": {
+    "name": "cdx-agents",
+    "repository": "https://github.com/Tiziano-AI/cdx-agents",
+    "commit": "42e715d2a63cdf0edb4749e438145a57d7513e40"
+  },
+  "role_count": 18,
+  "roles": [
+    {
+      "name": "architecture_challenger",
+      "description": "Read-only architecture challenger for canonical paths, ownership seams, deletion maps, and weak-design rejection.",
+      "contract": {
+        "allowed_surfaces": [
+          "readable local files",
+          "non-mutating commands",
+          "authorized research tools"
+        ],
+        "anti_owns": [
+          "implementation",
+          "provider capability",
+          "release proof"
+        ],
+        "expected_output": "Architecture risks, recommended survivor path, deletions, and decision blockers.",
+        "owns": [
+          "canonical paths",
+          "ownership seams",
+          "replacement maps",
+          "weak-design objections"
+        ],
+        "stop_condition": "Return once the parent has enough evidence to accept, reject, or redesign the architecture.",
+        "trigger": "Architecture, canonical ownership, deletion maps, or weak-design challenge is needed."
+      },
+      "model_policy": "inherit",
+      "path": "architecture_challenger.toml",
+      "sha256": "4c78c838b8f4293cb9cccdc50d9809321730ce2c1b6abcb492f8924a3acd6bb6"
+    },
+    {
+      "name": "authority_guardian",
+      "description": "Read-only authority guardian for permissions, credentials, filesystem, URL, redaction, untrusted input, and denial paths.",
+      "contract": {
+        "allowed_surfaces": [
+          "readable local files",
+          "non-mutating commands",
+          "authorized research tools"
+        ],
+        "anti_owns": [
+          "provider support",
+          "release lineage",
+          "generic policy review"
+        ],
+        "expected_output": "Admission and denial rows with residual authority risk.",
+        "owns": [
+          "authority boundaries",
+          "denial rows",
+          "redaction requirements",
+          "admission decisions"
+        ],
+        "stop_condition": "Return when each boundary has an owner, denial path, and proof expectation.",
+        "trigger": "A permission, credential, filesystem, URL, redaction, or untrusted-input boundary is touched."
+      },
+      "model_policy": "inherit",
+      "path": "authority_guardian.toml",
+      "sha256": "4e8391cd0647b1a4c6a35df66296d417255fab1fd1b4b513399095726d748c56"
+    },
+    {
+      "name": "behavioral_proof_reviewer",
+      "description": "Read-only proof reviewer for acceptance, denial, branch, side-effect, transition, false-positive, artifact, and gate freshness.",
+      "contract": {
+        "allowed_surfaces": [
+          "readable local files",
+          "non-mutating commands",
+          "authorized research tools"
+        ],
+        "anti_owns": [
+          "code fixes",
+          "architecture ownership",
+          "release channel lineage"
+        ],
+        "expected_output": "Falsifiable proof ladder, missing proof, commands, and stop conditions.",
+        "owns": [
+          "proof ladder",
+          "acceptance cases",
+          "denial cases",
+          "freshness gaps"
+        ],
+        "stop_condition": "Return when the parent can prove or reject the done claim.",
+        "trigger": "Acceptance, denial, side effect, state transition, or gate freshness proof is needed."
+      },
+      "model_policy": "inherit",
+      "path": "behavioral_proof_reviewer.toml",
+      "sha256": "dd296f51ea7967502a9da2f0654e3df4dbfbf05d7cfe4d07d05ac5926a93d721"
+    },
+    {
+      "name": "capability_package_architect",
+      "description": "Read-only capability-package architect for skills, plugins, trigger metadata, resources, examples, and review contracts.",
+      "contract": {
+        "allowed_surfaces": [
+          "readable local files",
+          "non-mutating commands",
+          "authorized research tools"
+        ],
+        "anti_owns": [
+          "runtime projection",
+          "release provenance",
+          "generic UX"
+        ],
+        "expected_output": "Package brief, resource design, metadata risks, validation path, and cleanup list.",
+        "owns": [
+          "package thesis",
+          "trigger boundaries",
+          "resources",
+          "metadata",
+          "review contract"
+        ],
+        "stop_condition": "Return when package shape and validation expectations are decision-ready.",
+        "trigger": "A skill, plugin, package, trigger boundary, or reusable capability is being designed."
+      },
+      "model_policy": "inherit",
+      "path": "capability_package_architect.toml",
+      "sha256": "42c201eaa120bd1b31964d76f0af77053e2247cd6ded1428db229e186df66472"
+    },
+    {
+      "name": "cli_surface_architect",
+      "description": "Read-only CLI surface architect for durable commands, doctor JSON, auth posture, ID resolution, dry-runs, and companion skills.",
+      "contract": {
+        "allowed_surfaces": [
+          "readable local files",
+          "non-mutating commands",
+          "authorized research tools"
+        ],
+        "anti_owns": [
+          "one-off scripts",
+          "hidden writes",
+          "provider support"
+        ],
+        "expected_output": "Command-surface recommendations, schema expectations, denial paths, and validation commands.",
+        "owns": [
+          "CLI commands",
+          "JSON envelopes",
+          "dry-runs",
+          "operator ergonomics",
+          "credential redaction"
+        ],
+        "stop_condition": "Return when the CLI contract is composable and proofable.",
+        "trigger": "A durable CLI, doctor JSON, dry-run, auth posture, or companion skill surface is changed."
+      },
+      "model_policy": "inherit",
+      "path": "cli_surface_architect.toml",
+      "sha256": "84f35d8f53da50a2959b137d0e91ed1ab0f26b278ac044ae73620ab0ec4dcd1b"
+    },
+    {
+      "name": "config_materializer",
+      "description": "Read-only config materializer for defaults, overrides, effective values, model identity, projections, and launch-path parity.",
+      "contract": {
+        "allowed_surfaces": [
+          "readable local files",
+          "non-mutating commands",
+          "authorized research tools"
+        ],
+        "anti_owns": [
+          "provider capability",
+          "credential admission",
+          "release artifacts"
+        ],
+        "expected_output": "Config origin map, effective-value matrix, drift reasons, and proof rows.",
+        "owns": [
+          "origin maps",
+          "effective values",
+          "projection rows",
+          "launch-path parity"
+        ],
+        "stop_condition": "Return when material settings have one source and one proof path.",
+        "trigger": "Defaults, overrides, effective values, schemas, docs, or launch paths can drift."
+      },
+      "model_policy": "inherit",
+      "path": "config_materializer.toml",
+      "sha256": "aff58361eff92285f6cfa0499f1c34f6164809fcd5b722c9e723ec975b525b20"
+    },
+    {
+      "name": "contract_reconciler",
+      "description": "Read-only contract reconciler for schemas, mappers, generated clients, envelopes, fixtures, docs, and examples.",
+      "contract": {
+        "allowed_surfaces": [
+          "readable local files",
+          "non-mutating commands",
+          "authorized research tools"
+        ],
+        "anti_owns": [
+          "credential admission",
+          "provider support",
+          "release lineage"
+        ],
+        "expected_output": "Contract owner map, replacement map, consumer matrix, denial rows, and cleanup list.",
+        "owns": [
+          "public contracts",
+          "mappers",
+          "fixtures",
+          "examples",
+          "consumer matrix"
+        ],
+        "stop_condition": "Return when one surviving contract and all consumers are identified.",
+        "trigger": "A public process edge, schema, mapper, envelope, fixture, docs example, or client can diverge."
+      },
+      "model_policy": "inherit",
+      "path": "contract_reconciler.toml",
+      "sha256": "776f9c33e7df605b9ddf4cd3d746f53b84cd81b4036fb71b990ed44b1a156dca"
+    },
+    {
+      "name": "doctrine_miner",
+      "description": "Explicit-only read-only doctrine miner for minimal reusable rules from repeated failures and universalization checks.",
+      "contract": {
+        "allowed_surfaces": [
+          "readable local files",
+          "non-mutating commands",
+          "authorized research tools"
+        ],
+        "anti_owns": [
+          "memory writes",
+          "repo edits",
+          "one-off preferences"
+        ],
+        "expected_output": "Candidate doctrine deltas with observations, scope, anti-triggers, and validation.",
+        "owns": [
+          "repeated-failure patterns",
+          "minimal doctrine deltas",
+          "anti-triggers",
+          "validation scenarios"
+        ],
+        "stop_condition": "Return when the parent can accept or reject the proposed doctrine.",
+        "trigger": "The parent explicitly asks for doctrine extraction or rule universalization."
+      },
+      "model_policy": "inherit",
+      "path": "doctrine_miner.toml",
+      "sha256": "2295ea346bb830fd39d50f399ab685cb5dcde3e7e04940df7b17e376ebea3697"
+    },
+    {
+      "name": "evidence_cartographer",
+      "description": "Read-only evidence cartographer for source, vendor-doc, runtime, literature, command, and citation maps.",
+      "contract": {
+        "allowed_surfaces": [
+          "readable local files",
+          "non-mutating commands",
+          "authorized research tools"
+        ],
+        "anti_owns": [
+          "implementation",
+          "final strategy",
+          "broad synthesis beyond the prompt"
+        ],
+        "expected_output": "Evidence map separating observed facts, inferences, uncertainty, and next checks.",
+        "owns": [
+          "source evidence",
+          "vendor citations",
+          "runtime proof",
+          "uncertainty map"
+        ],
+        "stop_condition": "Return when material claims are cited or explicitly unknown.",
+        "trigger": "Primary evidence is needed before conclusions or implementation."
+      },
+      "model_policy": "inherit",
+      "path": "evidence_cartographer.toml",
+      "sha256": "96171230fc0d06df373ba07dc59f9c51162f05ad1710ce8451660c477cece066"
+    },
+    {
+      "name": "extension_governor",
+      "description": "Read-only extension governor for model-visible tools, delegated agents, plugins, MCP, hooks, apps, exposure, lineage, and lifecycle.",
+      "contract": {
+        "allowed_surfaces": [
+          "readable local files",
+          "non-mutating commands",
+          "authorized research tools"
+        ],
+        "anti_owns": [
+          "credential admission",
+          "provider support",
+          "package craft"
+        ],
+        "expected_output": "Governance risks, allowed surface, required gates, and retirement conditions.",
+        "owns": [
+          "authority envelope",
+          "exposure scope",
+          "lineage",
+          "lifecycle",
+          "retirement path"
+        ],
+        "stop_condition": "Return when exposure is bounded and ownership is explicit.",
+        "trigger": "Model-visible tools, delegated agents, plugins, MCP, hooks, apps, or extension APIs change."
+      },
+      "model_policy": "inherit",
+      "path": "extension_governor.toml",
+      "sha256": "a4d6e16739ee243b62dea79ff45e99e4230bb80fe8b4eaf025bcb7afbfa50c66"
+    },
+    {
+      "name": "handoff_synthesist",
+      "description": "Explicit-only read-only handoff synthesist for compact, evidence-grounded resume state when context must transfer.",
+      "contract": {
+        "allowed_surfaces": [
+          "readable local files",
+          "non-mutating commands",
+          "authorized research tools"
+        ],
+        "anti_owns": [
+          "implementation continuation",
+          "narrative recap",
+          "unsupported progress claims"
+        ],
+        "expected_output": "Compact, instruction-style recovery artifact body and suggested path.",
+        "owns": [
+          "scope",
+          "evidence",
+          "blockers",
+          "next actions",
+          "validation status",
+          "stop rules"
+        ],
+        "stop_condition": "Return when the next agent can resume without chat history.",
+        "trigger": "The parent explicitly asks for a handoff, continuation ledger, or resume artifact."
+      },
+      "model_policy": "inherit",
+      "path": "handoff_synthesist.toml",
+      "sha256": "8576597f65253831b6b08578deacdd00362fb7df0336d671f2256c3dcc1261dc"
+    },
+    {
+      "name": "operator_state_tracer",
+      "description": "Read-only operator-state tracer for status, progress, denial, audit, stale-state, diagnostics, freshness, and rendered truth.",
+      "contract": {
+        "allowed_surfaces": [
+          "readable local files",
+          "non-mutating commands",
+          "authorized research tools"
+        ],
+        "anti_owns": [
+          "full behavior proof",
+          "release lineage",
+          "provider matrix"
+        ],
+        "expected_output": "State-source map, projection matrix, freshness rows, and proof gaps.",
+        "owns": [
+          "operator-visible state",
+          "freshness rows",
+          "diagnostic exports",
+          "projection matrix"
+        ],
+        "stop_condition": "Return when rendered state maps to runtime truth or a named unknown.",
+        "trigger": "Status, progress, denial copy, audit, diagnostics, stale rows, or rendered truth can drift."
+      },
+      "model_policy": "inherit",
+      "path": "operator_state_tracer.toml",
+      "sha256": "fca24ae9ba417b2171f9da10c8f3ee6cc69868ccbac87ca277779d4f76b18f19"
+    },
+    {
+      "name": "product_experience_auditor",
+      "description": "Read-only product-experience auditor for first success, trust, repeat use, product desire, onboarding, recovery, and human-facing flow quality.",
+      "contract": {
+        "allowed_surfaces": [
+          "readable local files",
+          "non-mutating commands",
+          "authorized research tools"
+        ],
+        "anti_owns": [
+          "platform implementation",
+          "backend contract review",
+          "isolated visual taste"
+        ],
+        "expected_output": "Prioritized observations, inferences, assumptions, recommendations, and residual risk.",
+        "owns": [
+          "promise",
+          "payoff",
+          "trust",
+          "recovery",
+          "onboarding",
+          "emotional residue"
+        ],
+        "stop_condition": "Return when product outcome risks are ranked and evidence mode is labelled.",
+        "trigger": "A human-facing flow needs first-success, trust, repeat-use, or product-desire audit."
+      },
+      "model_policy": "inherit",
+      "path": "product_experience_auditor.toml",
+      "sha256": "f0fa7d15ea4e7d6546b7313508d77ba51b970c62cd54b2dde749fd0a8d7acc6e"
+    },
+    {
+      "name": "protocol_probe_designer",
+      "description": "Read-only protocol probe designer for streaming, terminal, realtime, WebSocket, callback, cancellation, reconnect, and closeout proof.",
+      "contract": {
+        "allowed_surfaces": [
+          "readable local files",
+          "non-mutating commands",
+          "authorized research tools"
+        ],
+        "anti_owns": [
+          "workflow identity",
+          "release artifacts",
+          "generic operator copy"
+        ],
+        "expected_output": "Protocol state machine, deterministic probes, terminal rows, and residual unknowns.",
+        "owns": [
+          "state machines",
+          "probe matrix",
+          "terminal invariants",
+          "replay rows",
+          "cleanup proof"
+        ],
+        "stop_condition": "Return when every material protocol transition has a probe or named gap.",
+        "trigger": "Streaming, terminal, realtime, callback, cancellation, reconnect, or closeout behavior needs proof."
+      },
+      "model_policy": "inherit",
+      "path": "protocol_probe_designer.toml",
+      "sha256": "630b994e80432c39f5a6a9f7857fcf1aed77fbbc96595dbc6bb595f3b534f880"
+    },
+    {
+      "name": "provider_capability_scout",
+      "description": "Read-only provider-capability scout for backend, runtime, model, host, hardware, platform support, fallback, denial, diagnostics, and proof rows.",
+      "contract": {
+        "allowed_surfaces": [
+          "readable local files",
+          "non-mutating commands",
+          "authorized research tools"
+        ],
+        "anti_owns": [
+          "payload names",
+          "credential admission",
+          "release lineage"
+        ],
+        "expected_output": "Capability matrix with fallbacks, denials, diagnostics, and proof.",
+        "owns": [
+          "support matrix",
+          "fallback map",
+          "denial rows",
+          "diagnostics",
+          "proof rows"
+        ],
+        "stop_condition": "Return when unsupported claims are denied or backed by current evidence.",
+        "trigger": "A provider, backend, runtime, model, host, hardware, or platform support claim is material."
+      },
+      "model_policy": "inherit",
+      "path": "provider_capability_scout.toml",
+      "sha256": "aa4d0de0c42df05d14c2f732d13c0ea5bd8e30536b8524476301bb071ce5cc37"
+    },
+    {
+      "name": "release_provenance_custodian",
+      "description": "Read-only release-provenance custodian from source owner through generated artifacts, shipped candidates, installed behavior, rollback, and cleanup.",
+      "contract": {
+        "allowed_surfaces": [
+          "readable local files",
+          "non-mutating commands",
+          "authorized research tools"
+        ],
+        "anti_owns": [
+          "pre-release behavior proof",
+          "provider support",
+          "implementation"
+        ],
+        "expected_output": "Provenance chain, candidate fingerprint, channel rows, installed-behavior proof, and blockers.",
+        "owns": [
+          "release lineage",
+          "candidate fingerprints",
+          "installed proof",
+          "rollback",
+          "cleanup"
+        ],
+        "stop_condition": "Return when release readiness is reproducible or blocked by named evidence.",
+        "trigger": "Source-to-package-to-installed behavior, channel, rollback, or cleanup proof is needed."
+      },
+      "model_policy": "inherit",
+      "path": "release_provenance_custodian.toml",
+      "sha256": "4405edf7f5241fa09b2e3caab6d38915e81055b542263a2d9fb10a19fba729db"
+    },
+    {
+      "name": "repo_alignment_reviewer",
+      "description": "Read-only repo-alignment reviewer across source, docs, tests, config, examples, control-plane, runtime, and vendor behavior.",
+      "contract": {
+        "allowed_surfaces": [
+          "readable local files",
+          "non-mutating commands",
+          "authorized research tools"
+        ],
+        "anti_owns": [
+          "implementation",
+          "generic research",
+          "unbounded cleanup"
+        ],
+        "expected_output": "Prioritized drift table with paths, evidence, owner, impact, and survivor recommendation.",
+        "owns": [
+          "repo drift",
+          "canonical survivor",
+          "docs/tests/config alignment",
+          "obsolete paths"
+        ],
+        "stop_condition": "Return when drift is classified as mismatch, unknown, inherited, or new.",
+        "trigger": "Source, docs, tests, config, examples, runtime, or vendor behavior may be inconsistent."
+      },
+      "model_policy": "inherit",
+      "path": "repo_alignment_reviewer.toml",
+      "sha256": "05d615f17ac4e96574526252acb69a51cac3ab83e0e231eaa4182cc67622a76d"
+    },
+    {
+      "name": "workflow_ledger",
+      "description": "Read-only workflow ledger for sessions, background runs, caches, credentials, handoffs, resumes, retries, lifecycle state, and recovery.",
+      "contract": {
+        "allowed_surfaces": [
+          "readable local files",
+          "non-mutating commands",
+          "authorized research tools"
+        ],
+        "anti_owns": [
+          "streaming closure alone",
+          "release lineage",
+          "public contract mapping"
+        ],
+        "expected_output": "Lifecycle rows, transition risks, recovery steps, and terminal invariants.",
+        "owns": [
+          "lifecycle rows",
+          "state ledger",
+          "transition matrix",
+          "retries",
+          "recovery plan"
+        ],
+        "stop_condition": "Return when long-lived work has recoverable state and terminal conditions.",
+        "trigger": "Sessions, background runs, caches, credentials, handoffs, retries, resumes, or recovery need ownership."
+      },
+      "model_policy": "inherit",
+      "path": "workflow_ledger.toml",
+      "sha256": "4a44440dbae11ace8d1fe468080f92b32dad5d8b9a801babb7f28aca2c622fde"
+    }
+  ]
+}

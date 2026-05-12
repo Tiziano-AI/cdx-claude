@@ -1,0 +1,41 @@
+{
+  "name": "cdx-claude",
+  "version": "0.1.0",
+  "description": "Non-blocking Codex delegation to local Claude Code through a narrow persistent MCP wrapper.",
+  "author": {
+    "name": "Tiziano AI",
+    "url": "https://github.com/Tiziano-AI"
+  },
+  "homepage": "https://github.com/Tiziano-AI/cdx-claude",
+  "repository": "https://github.com/Tiziano-AI/cdx-claude",
+  "keywords": [
+    "codex",
+    "mcp",
+    "claude-code",
+    "delegation"
+  ],
+  "license": "MIT",
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "CDX Claude",
+    "shortDescription": "Delegate bounded Codex work to local Claude Code.",
+    "longDescription": "Starts local Claude Code jobs, lets Codex continue working, and exposes persistent status, event tails, results, and isolated worktree diffs for inspection.",
+    "developerName": "Tiziano AI",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/Tiziano-AI/cdx-claude",
+    "privacyPolicyURL": "https://github.com/Tiziano-AI/cdx-claude/blob/main/PRIVACY.md",
+    "termsOfServiceURL": "https://github.com/Tiziano-AI/cdx-claude/blob/main/TERMS.md",
+    "defaultPrompt": [
+      "Start a Claude research delegate for this repository and inspect its progress.",
+      "Start a Claude patch delegate in an isolated worktree and show me the diff.",
+      "Run the CDX Claude doctor and explain any blockers."
+    ],
+    "brandColor": "#7C3AED"
+  }
+}

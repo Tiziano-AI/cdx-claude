@@ -1,0 +1,64 @@
+{
+  "name": "cdx-claude",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Codex plugin runtime that delegates bounded work to local Claude Code through a persistent non-blocking MCP surface.",
+  "license": "MIT",
+  "author": "Tiziano AI",
+  "homepage": "https://github.com/Tiziano-AI/cdx-claude#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Tiziano-AI/cdx-claude.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Tiziano-AI/cdx-claude/issues"
+  },
+  "keywords": [
+    "codex",
+    "codex-plugin",
+    "mcp",
+    "claude-code",
+    "delegation"
+  ],
+  "packageManager": "pnpm@11.0.9",
+  "bin": {
+    "cdx-claude": "dist/src/cli.js"
+  },
+  "files": [
+    "dist/src/",
+    "roles/",
+    "README.md",
+    "LICENSE",
+    "TERMS.md",
+    "PRIVACY.md",
+    "SECURITY.md"
+  ],
+  "scripts": {
+    "build": "pnpm roles:check && pnpm build:ts && node scripts/prepare-bin.mjs && pnpm build:plugin",
+    "build:plugin": "node scripts/build-plugin.mjs",
+    "build:ts": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist plugin/bin/cdx-claude",
+    "roles:check": "node scripts/check-roles.mjs",
+    "roles:sync": "node scripts/sync-roles.mjs",
+    "test": "node --test \"dist/tests/*.test.js\"",
+    "verify": "pnpm clean && pnpm build && pnpm test",
+    "mcp:tools-proof": "node scripts/assert-mcp-tools.mjs",
+    "release:dry-run": "npm publish --dry-run"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.2.138",
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "25.6.2",
+    "esbuild": "0.28.0",
+    "typescript": "6.0.3"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

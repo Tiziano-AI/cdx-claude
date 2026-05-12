@@ -1,0 +1,7 @@
+interface:
+  display_name: "CDX Claude"
+  short_description: "Delegate bounded jobs to Claude Code."
+  default_prompt: "Use $cdx-claude to start a bounded Claude Code research delegate and inspect its status before applying anything."
+
+policy:
+  allow_implicit_invocation: true
