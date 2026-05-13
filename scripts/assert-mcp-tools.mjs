@@ -30,7 +30,7 @@ const transport = new StdioClientTransport({
   },
   stderr: "pipe"
 });
-const client = new Client({ name: "cdx-claude-tools-proof", version: "0.1.2" });
+const client = new Client({ name: "cdx-claude-tools-proof", version: "0.1.3" });
 
 try {
   await client.connect(transport);

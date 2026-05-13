@@ -38,9 +38,11 @@ The MCP server is short-lived request handling. It validates request payloads, w
 
 The public GitHub repository is `Tiziano-AI/cdx-claude`. It owns both the npm runtime package and a Codex marketplace file at `.agents/plugins/marketplace.json`. The marketplace entry points Codex at the installable plugin subdirectory `./plugin` through a Git subdirectory source.
 
-The installed plugin is cache-relative. `plugin/.mcp.json` launches `./bin/cdx-claude` with arguments `mcp serve` and `cwd: "."`. `plugin/bin/cdx-claude` is a small executable launcher that runs the version-pinned npm package `cdx-claude@0.1.2`. The launcher accepts `CDX_CLAUDE_NPM_SPEC` only for release-candidate proof against a local `pnpm pack` tarball before npm publish. Production Codex runtime leaves that override unset so the launcher resolves the public npm package. The launcher passes only an allowlisted environment to npm and may pass `CDX_CLAUDE_AUTH_ENV_FILE`, which is a path to a local auth dotenv file, not an auth secret. The plugin package does not commit a bundled Anthropic SDK artifact.
+The installed plugin is cache-relative. `plugin/.mcp.json` launches `./bin/cdx-claude` with arguments `mcp serve` and `cwd: "."`. `plugin/bin/cdx-claude` is a small executable launcher that runs the version-pinned npm package `cdx-claude@0.1.3`. The launcher accepts `CDX_CLAUDE_NPM_SPEC` only for release-candidate proof against a local `pnpm pack` tarball before npm publish. Production Codex runtime leaves that override unset so the launcher resolves the public npm package. The launcher passes only an allowlisted environment to npm and may pass `CDX_CLAUDE_AUTH_ENV_FILE`, which is a path to a local auth dotenv file, not an auth secret. It sets `CDX_CLAUDE_PLUGIN_ROOT` from the launcher `cwd` so stale inherited plugin-root values cannot point the npm runtime at an older cache version. The plugin package does not commit a bundled Anthropic SDK artifact.
 
 The npm package is the runtime owner. It ships the TypeScript build in `dist/`, the embedded delegate roles in `roles/`, and one public binary named `cdx-claude`. The hidden worker command is `cdx-claude __worker` and is not listed in help.
+
+Runtime executable discovery is late-bound. `claude_delegate_doctor` and worker launch resolve `node` from the current executable search path before falling back to the already-running `process.execPath`, so long-lived MCP processes do not keep using a Homebrew Cellar path after the filesystem path rotates. Claude Code discovery uses `CDX_CLAUDE_CODE_EXECUTABLE` only when configured; otherwise it searches the current executable search path and omits `pathToClaudeCodeExecutable` when no local executable is found so the Claude Agent SDK can use its bundled executable. Plugin metadata discovery accepts only a current-version plugin root, then falls back through the current working directory, the configured plugin root, the packaged plugin path, and the installed Codex cache path for the current release.
 
 ## Claude authentication boundary
 
@@ -106,7 +108,7 @@ A per-job lock owns status/event transitions. Terminal statuses are immutable. A
 
 `patch` creates a detached git worktree under the ledger worktree root from the target repository `HEAD`. Claude may read, edit, and write inside that worktree only. Shell is not available.
 
-`patch_autonomous` creates the same detached worktree as `patch`, enables Claude Code native sandboxing for Bash, and passes a scrubbed environment to the detached worker and SDK. Shell commands run only when SDK sandboxing is enabled with `failIfUnavailable: true`, `autoAllowBashIfSandboxed: true`, and `allowUnsandboxedCommands: false`. v0.1.2 does not claim network containment; network policy remains future work because Claude Code and provider access require network paths.
+`patch_autonomous` creates the same detached worktree as `patch`, enables Claude Code native sandboxing for Bash, and passes a scrubbed environment to the detached worker and SDK. Shell commands run only when SDK sandboxing is enabled with `failIfUnavailable: true`, `autoAllowBashIfSandboxed: true`, and `allowUnsandboxedCommands: false`. v0.1.3 does not claim network containment; network policy remains future work because Claude Code and provider access require network paths.
 
 The plugin launcher also uses an allowlisted environment when invoking npm. It forwards only process basics, cdx-claude configuration, and an empty npm userconfig path; it does not pass the full Codex MCP process environment through to npm or the runtime.
 
@@ -122,7 +124,7 @@ Every Claude delegate runs with a task-specific system prompt selected from the 
 
 ## Release identity
 
-One version controls the release: npm package version, plugin manifest version, plugin launcher npm spec, marketplace `ref`, and Git tag all match. The v0.1.2 public release supports macOS first. Linux and Windows remain experimental until direct Codex plugin proof and Claude sandbox proof exist on those platforms.
+One version controls the release: npm package version, plugin manifest version, plugin launcher npm spec, marketplace `ref`, and Git tag all match. The v0.1.3 public release supports macOS first. Linux and Windows remain experimental until direct Codex plugin proof and Claude sandbox proof exist on those platforms.
 
 ## Generated artifact exceptions
 

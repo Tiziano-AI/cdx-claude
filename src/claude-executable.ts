@@ -1,5 +1,4 @@
-import { existsSync, statSync } from "node:fs";
-import path from "node:path";
+import { resolvePathExecutable } from "./executable.js";
 
 export const CLAUDE_CODE_EXECUTABLE_ENV = "CDX_CLAUDE_CODE_EXECUTABLE";
 
@@ -9,23 +8,5 @@ export function resolveClaudeCodeExecutablePath(environment: NodeJS.ProcessEnv =
   if (configured !== undefined && configured.trim().length > 0) {
     return configured;
   }
-  const searchPath = environment.PATH ?? "";
-  for (const directory of searchPath.split(path.delimiter)) {
-    if (directory.length === 0) {
-      continue;
-    }
-    const candidate = path.join(directory, "claude");
-    if (isExecutableFile(candidate)) {
-      return candidate;
-    }
-  }
-  return undefined;
-}
-
-function isExecutableFile(candidate: string): boolean {
-  if (!existsSync(candidate)) {
-    return false;
-  }
-  const stats = statSync(candidate);
-  return stats.isFile() && (stats.mode & 0o111) !== 0;
+  return resolvePathExecutable("claude", environment);
 }

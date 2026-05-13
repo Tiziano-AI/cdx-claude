@@ -46,6 +46,9 @@ test("plugin package has one executable public binary and no source-anchored lau
   assert.match(launcherContent, new RegExp(`cdx-claude@${packageVersion.replaceAll(".", "\\.")}`));
   assert.match(launcherContent, /CDX_CLAUDE_NPM_SPEC/);
   assert.match(launcherContent, /CDX_CLAUDE_AUTH_ENV_FILE/);
+  assert.match(launcherContent, /CDX_CLAUDE_NODE_EXECUTABLE/);
+  assert.match(launcherContent, /CDX_CLAUDE_PLUGIN_ROOT: process\.cwd\(\)/);
+  assert.doesNotMatch(launcherContent, /CDX_CLAUDE_PLUGIN_ROOT: process\.env\.CDX_CLAUDE_PLUGIN_ROOT \?\? process\.cwd\(\)/);
   assert.match(launcherContent, /npm/);
   assert.doesNotMatch(launcherContent, /\.\.\.process\.env/);
   assert.match(launcherContent, /npm_config_userconfig/);
@@ -117,6 +120,7 @@ test("plugin skill tells Codex to leave the usage guard on the default path", as
   assert.match(skill, /Do not set or tune `max_budget_usd` proactively/);
   assert.match(skill, /Omit it unless the user explicitly requests/);
   assert.match(skill, /built-in default is `25`/);
+  assert.match(skill, /do not start delegation while doctor reports red runtime checks/);
   assert.doesNotMatch(openaiYaml, /max_budget_usd|usage guard|budget/i);
   assert.ok(pluginJson.interface?.defaultPrompt?.every((prompt) => !prompt.includes("max_budget_usd")));
   assert.ok(pluginJson.interface?.defaultPrompt?.every((prompt) => !/usage guard|budget/i.test(prompt)));

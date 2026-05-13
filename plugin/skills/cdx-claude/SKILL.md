@@ -11,6 +11,7 @@ Use this skill when Codex needs Claude Code as a servant delegate.
 
 - Codex remains the authority owner.
 - Start delegates with `claude_delegate_start`; do not call raw `claude mcp serve` tools as the product path.
+- Run `claude_delegate_doctor` before starting delegation when the plugin was just installed, upgraded, or restarted, or when runtime readiness is unknown; do not start delegation while doctor reports red runtime checks.
 - Choose an explicit `agent_role` from `claude_delegate_roles` for every start request.
 - Use `research` for read-only investigation.
 - Use `patch` for isolated worktree edits.

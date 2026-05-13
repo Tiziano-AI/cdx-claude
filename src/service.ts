@@ -56,6 +56,7 @@ import { runCommand, runRequired } from "./process-runner.js";
 import { pluginPackageCheck } from "./plugin-provenance.js";
 import { nowIso } from "./time.js";
 import { CLAUDE_CODE_EXECUTABLE_ENV, resolveClaudeCodeExecutablePath } from "./claude-executable.js";
+import { resolveNodeExecutable } from "./executable.js";
 import { workerTokenHash } from "./identity.js";
 import { toJobView } from "./job-view.js";
 import { toPublicEvents } from "./event-view.js";
@@ -328,7 +329,7 @@ export async function cleanupDelegation(request: CleanupRequest): Promise<{ job_
 
 export async function doctor(): Promise<DoctorReport> {
   const claude = await claudeRuntimeCheck();
-  const node = await commandCheck(process.execPath, ["--version"]);
+  const node = await nodeRuntimeCheck();
   const ledger = await ledgerCheck();
   const roles = await rolesCheck();
   const plugin = await pluginPackageCheck(activePluginRoot());
@@ -341,6 +342,20 @@ export async function doctor(): Promise<DoctorReport> {
     roles,
     plugin,
     sandbox
+  };
+}
+
+async function nodeRuntimeCheck() {
+  const resolution = resolveNodeExecutable();
+  const check = await commandCheck(resolution.executable, ["--version"]);
+  return {
+    ...check,
+    details: {
+      ...check.details,
+      resolution_source: resolution.source,
+      ...(resolution.env_key === undefined ? {} : { env_key: resolution.env_key }),
+      ...(resolution.current_exec_path === undefined ? {} : { current_exec_path: resolution.current_exec_path })
+    }
   };
 }
 

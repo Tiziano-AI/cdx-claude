@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3
+
+- Resolves Node from the current executable search path before falling back to `process.execPath`, so long-lived MCP sessions do not retain stale Homebrew Cellar paths.
+- Validates plugin metadata against the current plugin release version and ignores stale inherited plugin-root projections when the active launcher `cwd` or packaged plugin is current.
+- Projects the resolved Node executable and current plugin root into detached workers.
+
 ## 0.1.2
 
 - Raises the default Claude Agent SDK usage-estimate guard to `25`.

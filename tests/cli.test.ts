@@ -25,7 +25,7 @@ test("cli roles returns the stable JSON envelope", async () => {
   assert.ok(parsed.data.roles.some((role) => role.name === "workflow_ledger"));
 });
 
-test("cli doctor reports dependency failures without throwing internal errors", async () => {
+test("cli doctor falls back from an invalid plugin root without throwing internal errors", async () => {
   const result = await runCli(["doctor"], {
     CDX_CLAUDE_PLUGIN_ROOT: path.join(process.cwd(), "does-not-exist"),
     CDX_CLAUDE_CODE_EXECUTABLE: path.join(process.cwd(), "missing-claude")
@@ -39,7 +39,7 @@ test("cli doctor reports dependency failures without throwing internal errors", 
   assert.equal(parsed.ok, true);
   assert.equal(parsed.data.ok, false);
   assert.equal(parsed.data.claude.ok, false);
-  assert.equal(parsed.data.plugin.ok, false);
+  assert.equal(parsed.data.plugin.ok, true);
   assert.equal(parsed.meta.command, "doctor");
 });
 

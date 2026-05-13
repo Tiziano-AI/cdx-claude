@@ -38,7 +38,7 @@ export async function pluginPackageCheck(pluginRoot: string): Promise<DoctorChec
     const manifest = await readManifest(pluginRoot);
     const mcp = await readMcp(pluginRoot);
     const executable = await executableCheck(pluginRoot);
-    const launcher = await launcherCheck(pluginRoot, manifest.version);
+    const launcher = await launcherCheck(pluginRoot);
     const noForbiddenPaths = await forbiddenPathCheck(pluginRoot);
     const validMcp =
       mcp.command === "./bin/cdx-claude" &&
@@ -46,7 +46,7 @@ export async function pluginPackageCheck(pluginRoot: string): Promise<DoctorChec
       mcp.args[0] === "mcp" &&
       mcp.args[1] === "serve" &&
       mcp.cwd === ".";
-    const validManifest = manifest.name === "cdx-claude" && typeof manifest.version === "string";
+    const validManifest = manifest.name === "cdx-claude" && manifest.version === PLUGIN_VERSION;
     const ok = validManifest && validMcp && executable.ok && launcher.ok && noForbiddenPaths.ok;
     return {
       ok,
@@ -55,6 +55,7 @@ export async function pluginPackageCheck(pluginRoot: string): Promise<DoctorChec
         plugin_root: pluginRoot,
         manifest_name: manifest.name,
         manifest_version: manifest.version,
+        expected_version: PLUGIN_VERSION,
         command: mcp.command,
         args: mcp.args,
         cwd: mcp.cwd,
@@ -160,13 +161,12 @@ async function executableCheck(pluginRoot: string): Promise<DoctorCheck> {
   }
 }
 
-async function launcherCheck(pluginRoot: string, version: string | undefined): Promise<DoctorCheck> {
+async function launcherCheck(pluginRoot: string): Promise<DoctorCheck> {
   const executable = path.join(pluginRoot, "bin", "cdx-claude");
   const content = await readFile(executable, "utf8");
-  const expectedSpec = version === undefined ? undefined : `cdx-claude@${version}`;
+  const expectedSpec = `cdx-claude@${PLUGIN_VERSION}`;
   const ok =
     content.length < 10_000 &&
-    expectedSpec !== undefined &&
     content.includes(expectedSpec) &&
     content.includes("CDX_CLAUDE_NPM_SPEC") &&
     content.includes("npm") &&
