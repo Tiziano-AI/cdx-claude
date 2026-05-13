@@ -1,6 +1,6 @@
 {
   "name": "cdx-claude",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Non-blocking Codex delegation to local Claude Code through a narrow persistent MCP wrapper.",
   "author": {
     "name": "Tiziano AI",

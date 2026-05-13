@@ -4,7 +4,12 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import type { JobRecord } from "../src/contracts.js";
-import { JobIdRequestSchema, SandboxCanaryRequestSchema, StartRequestSchema } from "../src/contracts.js";
+import {
+  DEFAULT_SDK_USAGE_GUARD_USD,
+  JobIdRequestSchema,
+  SandboxCanaryRequestSchema,
+  StartRequestSchema
+} from "../src/contracts.js";
 import { appendEvent, initializeJob, tailEvents } from "../src/ledger.js";
 
 test("start requests require an absolute cwd", () => {
@@ -52,6 +57,13 @@ test("public request schemas reject unknown keys and require canary roles", () =
     }).success,
     false
   );
+});
+
+test("sandbox canary request uses the standard SDK usage guard default", () => {
+  const parsed = SandboxCanaryRequestSchema.parse({
+    agent_role: "authority_guardian"
+  });
+  assert.equal(parsed.max_budget_usd, DEFAULT_SDK_USAGE_GUARD_USD);
 });
 
 test("ledger appends monotonic event sequence numbers under concurrent writers", async () => {

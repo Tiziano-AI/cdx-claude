@@ -18,7 +18,8 @@ Use this skill when Codex needs Claude Code as a servant delegate.
 - Inspect with `claude_delegate_status`, `claude_delegate_tail`, `claude_delegate_result`, and `claude_delegate_diff`.
 - Apply no patch until Codex has read the diff and validated it.
 - Treat canary proof as side-effect proof from `claude_delegate_result`, not marker text alone.
-- Treat `claude_delegate_start`, `claude_delegate_sandbox_canary`, `allow_web: true`, custom `model`, and `max_budget_usd` above the default as actions requiring explicit user authorization in the current task.
+- Treat `claude_delegate_start`, `claude_delegate_sandbox_canary`, `allow_web: true`, custom `model`, and any non-default `max_budget_usd` value as actions requiring explicit user authorization in the current task.
+- Do not set or tune `max_budget_usd` proactively. Omit it unless the user explicitly requests a different Claude Agent SDK usage-estimate stop guard. The built-in default is `25`, maps to SDK `maxBudgetUsd`, and is an API-equivalent estimate guard, not a subscription billing claim.
 - Treat the ledger as shared local operator state: any enabled Codex session can inspect prior cdx-claude jobs until cleanup removes them.
 
 ## Required start payload

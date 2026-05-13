@@ -20,7 +20,7 @@ test("mcp tools list exposes only the wrapper delegation tools", async () => {
     },
     stderr: "pipe"
   });
-  const client = new Client({ name: "cdx-claude-test", version: "0.1.1" });
+  const client = new Client({ name: "cdx-claude-test", version: "0.1.2" });
   try {
     await client.connect(transport);
     const tools = await client.listTools();
@@ -40,6 +40,13 @@ test("mcp tools list exposes only the wrapper delegation tools", async () => {
     ]);
     const startTool = tools.tools.find((tool) => tool.name === "claude_delegate_start");
     assert.deepEqual(startTool?.inputSchema.required, ["cwd", "prompt", "mode", "agent_role"]);
+    const startProperties = startTool?.inputSchema.properties as Record<string, { default?: unknown; description?: string }> | undefined;
+    assert.equal(startProperties?.max_budget_usd?.default, undefined);
+    assert.match(startProperties?.max_budget_usd?.description ?? "", /Do not set this field unless the user explicitly requested/);
+    const canaryTool = tools.tools.find((tool) => tool.name === "claude_delegate_sandbox_canary");
+    const canaryProperties = canaryTool?.inputSchema.properties as Record<string, { default?: unknown; description?: string }> | undefined;
+    assert.equal(canaryProperties?.max_budget_usd?.default, undefined);
+    assert.match(canaryProperties?.max_budget_usd?.description ?? "", /Do not set this field unless the user explicitly requested/);
     assert.equal(JSON.stringify(startTool?.outputSchema).includes("\"oneOf\""), true);
   } finally {
     await client.close();
@@ -59,7 +66,7 @@ test("mcp tool calls return stable success and denial envelopes", async () => {
     },
     stderr: "pipe"
   });
-  const client = new Client({ name: "cdx-claude-test", version: "0.1.1" });
+  const client = new Client({ name: "cdx-claude-test", version: "0.1.2" });
   try {
     await client.connect(transport);
     const success = await client.callTool({ name: "claude_delegate_roles", arguments: {} });
@@ -91,7 +98,7 @@ test("mcp invalid inputs return product failure envelopes", async () => {
     },
     stderr: "pipe"
   });
-  const client = new Client({ name: "cdx-claude-test", version: "0.1.1" });
+  const client = new Client({ name: "cdx-claude-test", version: "0.1.2" });
   try {
     await client.connect(transport);
     for (const call of [
@@ -133,7 +140,7 @@ test("mcp start/status/result/cleanup works through the public wrapper", async (
     },
     stderr: "pipe"
   });
-  const client = new Client({ name: "cdx-claude-positive-test", version: "0.1.1" });
+  const client = new Client({ name: "cdx-claude-positive-test", version: "0.1.2" });
   try {
     await client.connect(transport);
     const started = await client.callTool({

@@ -107,3 +107,17 @@ test("release identity is aligned across npm package, plugin manifest, launcher,
     "SECURITY.md"
   ]);
 });
+
+test("plugin skill tells Codex to leave the usage guard on the default path", async () => {
+  const skill = await readFile(path.join("plugin", "skills", "cdx-claude", "SKILL.md"), "utf8");
+  const openaiYaml = await readFile(path.join("plugin", "skills", "cdx-claude", "agents", "openai.yaml"), "utf8");
+  const pluginJson = JSON.parse(await readFile(path.join("plugin", ".codex-plugin", "plugin.json"), "utf8")) as {
+    interface?: { defaultPrompt?: string[] };
+  };
+  assert.match(skill, /Do not set or tune `max_budget_usd` proactively/);
+  assert.match(skill, /Omit it unless the user explicitly requests/);
+  assert.match(skill, /built-in default is `25`/);
+  assert.doesNotMatch(openaiYaml, /max_budget_usd|usage guard|budget/i);
+  assert.ok(pluginJson.interface?.defaultPrompt?.every((prompt) => !prompt.includes("max_budget_usd")));
+  assert.ok(pluginJson.interface?.defaultPrompt?.every((prompt) => !/usage guard|budget/i.test(prompt)));
+});

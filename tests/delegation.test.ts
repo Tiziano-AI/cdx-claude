@@ -32,7 +32,7 @@ test("patch jobs run in a detached worktree and expose diffs", async () => {
     const stored = await readJob(job.job_id);
     assert.equal("worker_token" in stored, false);
     assert.match(stored.worker_token_hash ?? "", /^[0-9a-f]{64}$/);
-    assert.equal(stored.max_budget_usd, 1);
+    assert.equal(stored.max_budget_usd, 25);
     assert.match(stored.agent_prompt ?? "", new RegExp(`Execution root: ${escapeRegExp(job.worktree_path)}`));
     assert.doesNotMatch(stored.agent_prompt ?? "", new RegExp(`Execution root: ${escapeRegExp(repo)}`));
     const completed = await waitForCompletion(job.job_id);

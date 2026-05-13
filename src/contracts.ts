@@ -5,8 +5,8 @@ export const JobModeSchema = z.enum(["research", "patch", "patch_autonomous"]);
 export const JobStatusSchema = z.enum(["starting", "running", "stopping", "completed", "failed", "stopped", "stale"]);
 export const JobIdSchema = z.string().regex(/^claude-\d{8}-\d{9}-[0-9a-f]{8}$/, "job_id must be a generated cdx-claude id");
 export const AgentRoleNameSchema = z.string().regex(/^[a-z][a-z0-9_]*$/, "agent_role must be a packaged delegate role name");
-export const DEFAULT_MAX_BUDGET_USD = 1;
-export const MAX_MAX_BUDGET_USD = 100;
+export const DEFAULT_SDK_USAGE_GUARD_USD = 25;
+export const MAX_SDK_USAGE_GUARD_USD = 100;
 
 export type JobMode = z.infer<typeof JobModeSchema>;
 export type JobStatus = z.infer<typeof JobStatusSchema>;
@@ -19,7 +19,7 @@ export const StartRequestSchema = z.object({
   allow_web: z.boolean().default(false),
   title: z.string().min(1).max(120).optional(),
   model: z.string().min(1).optional(),
-  max_budget_usd: z.number().positive().max(MAX_MAX_BUDGET_USD).optional()
+  max_budget_usd: z.number().positive().max(MAX_SDK_USAGE_GUARD_USD).optional()
 }).strict();
 
 export const JobIdRequestSchema = z.object({
@@ -44,7 +44,7 @@ export const CleanupRequestSchema = JobIdRequestSchema.extend({
 export const SandboxCanaryRequestSchema = z.object({
   agent_role: AgentRoleNameSchema,
   model: z.string().min(1).optional(),
-  max_budget_usd: z.number().positive().max(MAX_MAX_BUDGET_USD).default(0.2)
+  max_budget_usd: z.number().positive().max(MAX_SDK_USAGE_GUARD_USD).default(DEFAULT_SDK_USAGE_GUARD_USD)
 }).strict();
 
 export const EmptyRequestSchema = z.object({}).strict();
@@ -88,7 +88,7 @@ export const JobRecordSchema = z.object({
   claude_session_id: z.string().min(1).optional(),
   claude_task_ids: z.array(z.string()).default([]),
   model: z.string().min(1).optional(),
-  max_budget_usd: z.number().positive().max(MAX_MAX_BUDGET_USD).optional(),
+  max_budget_usd: z.number().positive().max(MAX_SDK_USAGE_GUARD_USD).optional(),
   sandbox_canary: z.boolean().optional(),
   sandbox_canary_parent_probe_path: z.string().min(1).optional(),
   sandbox_canary_tmp_probe_path: z.string().min(1).optional(),
@@ -120,7 +120,7 @@ export const JobViewSchema = z.object({
   claude_session_id: z.string().min(1).optional(),
   claude_task_ids: z.array(z.string()).default([]),
   model: z.string().min(1).optional(),
-  max_budget_usd: z.number().positive().max(MAX_MAX_BUDGET_USD).optional(),
+  max_budget_usd: z.number().positive().max(MAX_SDK_USAGE_GUARD_USD).optional(),
   sandbox_canary: z.boolean().optional(),
   sandbox_canary_parent_probe_path: z.string().min(1).optional(),
   sandbox_canary_tmp_probe_path: z.string().min(1).optional(),

@@ -1,6 +1,7 @@
 import { DoctorCheck } from "./contracts.js";
+import { PLUGIN_VERSION } from "./paths.js";
 
-/** Reports whether cdx-claude v0.1.1 supports autonomous Claude sandbox jobs on this platform. */
+/** Reports whether the current cdx-claude release supports autonomous Claude sandbox jobs on this platform. */
 export function sandboxPlatformSupported(): boolean {
   return currentPlatform() === "darwin";
 }
@@ -12,7 +13,7 @@ export function sandboxCheck(): DoctorCheck {
     ok: supported,
     summary: supported
       ? "Claude Code native sandbox is configured fail-closed; run sandbox canary for live proof"
-      : "patch_autonomous is unsupported on this platform in cdx-claude v0.1.1",
+      : `patch_autonomous is unsupported on this platform in cdx-claude v${PLUGIN_VERSION}`,
     details: {
       patch_autonomous_supported: supported,
       platform: currentPlatform(),

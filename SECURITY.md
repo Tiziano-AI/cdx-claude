@@ -12,7 +12,9 @@ The authority boundary is:
 - Claude returns evidence, results, and optional isolated worktree diffs.
 - Claude never receives direct write authority over the parent workspace.
 
-Starting a delegate, running a sandbox canary, enabling web tools, selecting a custom model, or raising `max_budget_usd` above the default is an operator-authorized action. The MCP server enforces strict request schemas, role selection, `cwd` admission, mode permissions, worker identity, and cleanup denials; it does not add a separate interactive approval system on top of Codex and Claude.
+Starting a delegate, running a sandbox canary, enabling web tools, selecting a custom model, or setting any non-default `max_budget_usd` value is an operator-authorized action. Codex must omit `max_budget_usd` unless the user explicitly requests a different guard. The MCP server enforces strict request schemas, role selection, `cwd` admission, mode permissions, worker identity, and cleanup denials; it does not add a separate interactive approval system on top of Codex and Claude.
+
+`max_budget_usd` is an SDK usage-estimate stop guard. It is not an authoritative billing boundary, and Claude Max or Pro subscription usage is governed by the user's Claude account plan and provider-side limits.
 
 `patch_autonomous` uses Claude Code native sandboxing for Bash/subprocess containment with fail-closed startup. Built-in Claude file tools are controlled separately by the cdx-claude permission gate. A Git worktree is version-control isolation, not a security sandbox.
 
@@ -23,6 +25,6 @@ Job ledgers are shared local operator state. Any enabled Codex session that can 
 
 Plugin-launched API or cloud-provider credentials flow through `CDX_CLAUDE_AUTH_ENV_FILE`. That variable contains a local file path only. The runtime reads allowlisted auth rows from the file after npm launches the package; unknown rows are rejected so auth typos fail closed. Credential values are passed to Claude Code/SDK execution and are not product-redacted from provider handling by cdx-claude.
 
-## Supported v0.1.1 proof
+## Supported v0.1.2 proof
 
 `patch_autonomous` is supported on macOS after `claude_delegate_sandbox_canary` proves the current local runtime. Linux and Windows are experimental until direct release proof exists.

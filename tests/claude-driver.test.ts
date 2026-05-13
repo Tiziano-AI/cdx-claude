@@ -37,6 +37,11 @@ test("patch mode removes Bash while keeping file edit tools", () => {
   assert.equal(options.disallowedTools.includes("Bash"), true);
 });
 
+test("sdk options forward the API-equivalent usage guard", () => {
+  const options = buildClaudeOptionsForJob(jobRecord({ max_budget_usd: 25 }), new AbortController());
+  assert.equal(options.maxBudgetUsd, 25);
+});
+
 test("sdk options pass the resolved local Claude Code executable", async () => {
   const originalPath = process.env.PATH;
   const originalExecutable = process.env.CDX_CLAUDE_CODE_EXECUTABLE;

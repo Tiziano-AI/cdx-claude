@@ -8,7 +8,7 @@ import { JobRecord } from "./contracts.js";
 import { ClaudeOptions, ClaudeSandboxSettings, loadClaudeSdk } from "./claude-sdk.js";
 import { appendEvent, updateJob, writeResultMarkdown } from "./ledger.js";
 import { buildPermissionGate } from "./permission.js";
-import { jobsRoot, tempPath } from "./paths.js";
+import { jobsRoot, PLUGIN_VERSION, tempPath } from "./paths.js";
 
 const MessageSummarySchema = z
   .object({
@@ -208,7 +208,7 @@ function claudeEnvironment(jobId: string): Record<string, string | undefined> {
     LOGNAME: process.env.LOGNAME,
     SHELL: process.env.SHELL,
     CLAUDE_CODE_DISABLE_AUTO_MEMORY: "1",
-    CLAUDE_AGENT_SDK_CLIENT_APP: "cdx-claude/0.1.1"
+    CLAUDE_AGENT_SDK_CLIENT_APP: `cdx-claude/${PLUGIN_VERSION}`
   };
 }
 

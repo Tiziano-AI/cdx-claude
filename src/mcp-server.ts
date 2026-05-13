@@ -14,6 +14,7 @@ import {
   EmptyRequestSchema,
   JobIdRequestSchema,
   ListRequestSchema,
+  MAX_SDK_USAGE_GUARD_USD,
   SandboxCanaryRequestSchema,
   StartRequestSchema,
   TailRequestSchema
@@ -33,6 +34,7 @@ import {
   stopDelegation,
   tailDelegation
 } from "./service.js";
+import { PLUGIN_VERSION } from "./paths.js";
 
 const EMPTY_INPUT_SCHEMA = {
   type: "object",
@@ -104,14 +106,14 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
       type: "object",
       required: ["cwd", "prompt", "mode", "agent_role"],
       properties: {
-        cwd: { type: "string" },
-        prompt: { type: "string" },
+        cwd: { type: "string", description: "Absolute target repository or workspace path." },
+        prompt: { type: "string", description: "Concrete delegated task for Claude Code." },
         mode: { enum: ["research", "patch", "patch_autonomous"] },
-        agent_role: { type: "string", pattern: "^[a-z][a-z0-9_]*$" },
-        allow_web: { type: "boolean" },
-        title: { type: "string" },
-        model: { type: "string" },
-        max_budget_usd: { type: "number", exclusiveMinimum: 0, maximum: 100 }
+        agent_role: { type: "string", pattern: "^[a-z][a-z0-9_]*$", description: "Packaged delegate role from claude_delegate_roles." },
+        allow_web: { type: "boolean", description: "Expose Claude WebFetch and WebSearch only when the user authorized web access." },
+        title: { type: "string", description: "Optional short human label for the job." },
+        model: { type: "string", description: "Optional Claude model selector. Omit unless the user explicitly requested a model." },
+        max_budget_usd: usageGuardInputSchema()
       },
       additionalProperties: false
     },
@@ -217,9 +219,9 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
       type: "object",
       required: ["agent_role"],
       properties: {
-        agent_role: { type: "string", pattern: "^[a-z][a-z0-9_]*$" },
-        model: { type: "string" },
-        max_budget_usd: { type: "number", exclusiveMinimum: 0, maximum: 100 }
+        agent_role: { type: "string", pattern: "^[a-z][a-z0-9_]*$", description: "Packaged delegate role from claude_delegate_roles." },
+        model: { type: "string", description: "Optional Claude model selector. Omit unless the user explicitly requested a model." },
+        max_budget_usd: usageGuardInputSchema()
       },
       additionalProperties: false
     },
@@ -242,7 +244,7 @@ export async function serveMcp(): Promise<void> {
   const server = new Server(
     {
       name: "cdx-claude",
-      version: "0.1.1"
+      version: PLUGIN_VERSION
     },
     {
       capabilities: {
@@ -320,6 +322,15 @@ function metaSchema(): Record<string, unknown> {
       generated_at: { type: "string" }
     },
     additionalProperties: false
+  };
+}
+
+function usageGuardInputSchema(): Record<string, unknown> {
+  return {
+    type: "number",
+    exclusiveMinimum: 0,
+    maximum: MAX_SDK_USAGE_GUARD_USD,
+    description: "Do not set this field unless the user explicitly requested a different Claude Agent SDK API-equivalent usage-estimate stop guard. When omitted, cdx-claude uses its built-in default."
   };
 }
 

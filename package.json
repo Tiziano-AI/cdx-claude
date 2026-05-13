@@ -1,6 +1,6 @@
 {
   "name": "cdx-claude",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "description": "Codex plugin runtime that delegates bounded work to local Claude Code through a persistent non-blocking MCP surface.",
   "license": "MIT",
@@ -46,7 +46,7 @@
     "release:dry-run": "npm publish --dry-run"
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "0.2.138",
+    "@anthropic-ai/claude-agent-sdk": "0.2.139",
     "@modelcontextprotocol/sdk": "1.29.0",
     "zod": "4.4.3"
   },

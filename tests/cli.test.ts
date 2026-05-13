@@ -7,6 +7,7 @@ test("cli help documents the public mcp serve command", async () => {
   const result = await runCli(["--help"]);
   assert.equal(result.exit_code, 0);
   assert.match(result.stdout, /cdx-claude mcp serve/);
+  assert.match(result.stdout, /default 25/);
   assert.doesNotMatch(result.stdout, /__worker/);
 });
 

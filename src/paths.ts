@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const PRODUCT_NAME = "cdx-claude";
-export const PLUGIN_VERSION = "0.1.1";
+export const PLUGIN_VERSION = "0.1.2";
 
 export function stateRoot(): string {
   return process.env.CDX_CLAUDE_HOME ?? path.join(homedir(), ".codex", PRODUCT_NAME);

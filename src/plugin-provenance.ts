@@ -6,6 +6,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { DoctorCheck } from "./contracts.js";
 import { errorMessage } from "./errors.js";
+import { PLUGIN_VERSION } from "./paths.js";
 
 const EXPECTED_TOOLS = [
   "claude_delegate_cleanup",
@@ -87,7 +88,7 @@ export async function installedMcpToolsCheck(pluginRoot: string): Promise<Doctor
     },
     stderr: "pipe"
   });
-  const client = new Client({ name: "cdx-claude-doctor", version: "0.1.1" });
+  const client = new Client({ name: "cdx-claude-doctor", version: PLUGIN_VERSION });
   try {
     await client.connect(transport);
     const listed = await client.listTools();

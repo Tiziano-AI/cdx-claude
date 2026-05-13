@@ -38,6 +38,7 @@ export interface ClaudeOptions {
   maxTurns: number;
   agentProgressSummaries: boolean;
   model?: string;
+  /** Claude Agent SDK API-equivalent usage-estimate stop guard, not authoritative billing. */
   maxBudgetUsd?: number;
 }
 

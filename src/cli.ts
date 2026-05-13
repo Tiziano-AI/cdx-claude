@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import {
   CleanupRequestSchema,
+  DEFAULT_SDK_USAGE_GUARD_USD,
   EmptyRequestSchema,
   JobIdRequestSchema,
   ListRequestSchema,
@@ -194,6 +195,7 @@ function writeHelp(): void {
       "  cdx-claude doctor",
       "  cdx-claude roles",
       "  cdx-claude jobs start --cwd /repo --prompt 'task' --mode research --agent-role evidence_cartographer",
+      `    Omit --max-budget-usd unless the user explicitly requested a non-default SDK usage-estimate guard; default ${DEFAULT_SDK_USAGE_GUARD_USD}.`,
       "  cdx-claude jobs list [--status running] [--limit 50]",
       "  cdx-claude jobs status <job_id>",
       "  cdx-claude jobs tail <job_id> [--limit 50]",
@@ -202,6 +204,7 @@ function writeHelp(): void {
       "  cdx-claude jobs stop <job_id>",
       "  cdx-claude jobs cleanup <job_id> [--force] [--remove-ledger]",
       "  cdx-claude sandbox canary --agent-role authority_guardian",
+      `    Omit --max-budget-usd unless the user explicitly requested a non-default SDK usage-estimate guard; default ${DEFAULT_SDK_USAGE_GUARD_USD}.`,
       ""
     ].join("\n")
   );
