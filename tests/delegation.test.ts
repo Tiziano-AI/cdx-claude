@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { diffDelegation, cleanupDelegation, startJob, statusJob, stopDelegation, tailDelegation } from "../src/service.js";
+import { diffDelegation, cleanupDelegation, resultDelegation, startJob, statusJob, stopDelegation, tailDelegation } from "../src/service.js";
 import { initializeJob, readJob, tailEvents } from "../src/ledger.js";
 import { runRequired } from "../src/process-runner.js";
 import { runWorker } from "../src/worker.js";
@@ -178,6 +178,35 @@ test("unknown agent roles fail before a worker is spawned", async () => {
   }
 });
 
+test("start denies red runtime materialization before ledger mutation", async () => {
+  const sandbox = await mkdtemp(path.join(tmpdir(), "cdx-claude-red-runtime-"));
+  const state = path.join(sandbox, "state");
+  const repo = path.join(sandbox, "repo");
+  const previousHome = process.env.CDX_CLAUDE_HOME;
+  const previousExecutable = process.env.CDX_CLAUDE_CODE_EXECUTABLE;
+  process.env.CDX_CLAUDE_HOME = state;
+  process.env.CDX_CLAUDE_CODE_EXECUTABLE = path.join(sandbox, "missing-claude");
+  try {
+    await bootstrapRepo(repo);
+    await assert.rejects(
+      () => startJob({
+        cwd: repo,
+        prompt: "must not start",
+        mode: "research",
+        agent_role: "workflow_ledger",
+        allow_web: false
+      }),
+      /runtime is not ready/
+    );
+    const jobs = await readdir(path.join(state, "jobs")).catch(() => []);
+    assert.deepEqual(jobs, []);
+  } finally {
+    restoreEnv("CDX_CLAUDE_HOME", previousHome);
+    restoreEnv("CDX_CLAUDE_CODE_EXECUTABLE", previousExecutable);
+    await rm(sandbox, { recursive: true, force: true });
+  }
+});
+
 test("sensitive control roots are denied before ledger mutation", async () => {
   const sandbox = await mkdtemp(path.join(tmpdir(), "cdx-claude-sensitive-deny-test-"));
   const codexRoot = path.join(sandbox, ".codex");
@@ -336,6 +365,43 @@ test("public event tails omit cdx-claude worker identity metadata", async () => 
   }
 });
 
+test("public tail result and diff redact configured auth env values", async () => {
+  const sandbox = await mkdtemp(path.join(tmpdir(), "cdx-claude-auth-redaction-test-"));
+  const state = path.join(sandbox, "state");
+  const repo = path.join(sandbox, "repo");
+  const authFile = path.join(sandbox, "cdx-claude.env");
+  const secret = "anthropic-secret-redaction-value";
+  process.env.CDX_CLAUDE_HOME = state;
+  process.env.CDX_CLAUDE_DRIVER = "fake";
+  process.env.CDX_CLAUDE_FAKE_ECHO_ENV_KEY = "ANTHROPIC_API_KEY";
+  process.env.CDX_CLAUDE_AUTH_ENV_FILE = authFile;
+  try {
+    await writeFile(authFile, `ANTHROPIC_API_KEY=${secret}\n`, "utf8");
+    await chmod(authFile, 0o600);
+    await bootstrapRepo(repo);
+    const job = await startJob({
+      cwd: repo,
+      prompt: `inspect without leaking ${secret}`,
+      mode: "patch_autonomous",
+      agent_role: "authority_guardian",
+      allow_web: false
+    });
+    await waitForCompletion(job.job_id);
+    const tail = await tailDelegation(job.job_id, 100);
+    const result = await resultDelegation(job.job_id);
+    const diff = await diffDelegation(job.job_id);
+    const publicText = JSON.stringify({ tail, result, diff });
+    assert.equal(publicText.includes(secret), false);
+    assert.match(publicText, /\[redacted\]/);
+  } finally {
+    delete process.env.CDX_CLAUDE_HOME;
+    delete process.env.CDX_CLAUDE_DRIVER;
+    delete process.env.CDX_CLAUDE_FAKE_ECHO_ENV_KEY;
+    delete process.env.CDX_CLAUDE_AUTH_ENV_FILE;
+    await rm(sandbox, { recursive: true, force: true });
+  }
+});
+
 async function appendRawIdentityEvent(jobId: string): Promise<void> {
   const { appendEvent } = await import("../src/ledger.js");
   await appendEvent(jobId, "worker_running", "Worker entered execution", {
@@ -392,4 +458,12 @@ async function waitForPidExit(pid: number): Promise<void> {
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function restoreEnv(key: string, value: string | undefined): void {
+  if (value === undefined) {
+    delete process.env[key];
+  } else {
+    process.env[key] = value;
+  }
 }

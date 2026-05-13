@@ -10,18 +10,18 @@ Prerequisites:
 
 - Codex with plugin marketplace support.
 - Node.js 20 or newer.
-- Node-compatible Claude Agent SDK runtime. The SDK bundled Claude Code executable is used when no local `claude` executable or `CDX_CLAUDE_CODE_EXECUTABLE` override is found.
+- Node-compatible Claude Agent SDK runtime. The SDK bundled Claude Code executable is used unless `CDX_CLAUDE_CODE_EXECUTABLE` points at an explicit validated local executable.
 - Anthropic-supported Claude Code or Claude Agent SDK authentication for the user running Codex.
 - Git for patch modes.
-- macOS for supported `patch_autonomous` sandbox proof in v0.1.3.
+- macOS for supported `patch_autonomous` sandbox proof in v0.1.4.
 
 Install the public marketplace and plugin from GitHub after the release tag exists:
 
 ```bash
-codex plugin marketplace add Tiziano-AI/cdx-claude --ref v0.1.3
+codex plugin marketplace add https://github.com/Tiziano-AI/cdx-claude.git --ref v0.1.4
 ```
 
-The marketplace entry installs the `cdx-claude` plugin from the repository `plugin/` directory. The installed plugin launches a pinned npm runtime through `./bin/cdx-claude`, so first use downloads `cdx-claude@0.1.3` with npm tooling. Production Codex plugin use resolves the public npm package; `CDX_CLAUDE_NPM_SPEC` is only a release-candidate proof override for local tarballs.
+The marketplace entry installs the `cdx-claude` plugin from the repository `plugin/` directory. The installed plugin launches a pinned npm runtime through `./bin/cdx-claude`, so first use downloads `cdx-claude@0.1.4` with npm tooling. Production Codex plugin use resolves the public npm package; `CDX_CLAUDE_NPM_SPEC` is only a release-candidate proof override for local tarballs.
 If a previous `cdx-claude@local-personal` prototype is installed, disable or uninstall it before runtime proof. The active MCP row should resolve to the public Git marketplace cache, not `local-personal`.
 After upgrading the marketplace ref, run `codex plugin marketplace upgrade cdx-claude` and verify `codex mcp get cdx-claude` points at the intended cache version. The skill path and active MCP row are separate runtime surfaces.
 
@@ -33,17 +33,16 @@ ANTHROPIC_API_KEY=...
 EOF
 ```
 
-Then set `CDX_CLAUDE_AUTH_ENV_FILE=/absolute/path/to/private/cdx-claude.env` in the Codex environment that launches the plugin. The plugin launcher passes that path through npm; the runtime loads the allowlisted auth variables only after the npm launcher has started `cdx-claude`.
+Set the file mode to `0600`, then set `CDX_CLAUDE_AUTH_ENV_FILE=/absolute/path/to/private/cdx-claude.env` in the Codex environment that launches the plugin. The plugin launcher passes that path through npm; the runtime loads the allowlisted auth variables only after the npm launcher has started `cdx-claude`.
 
 For CLI-only debugging against the public npm package:
 
 ```bash
 cd /tmp
-npx -y cdx-claude@0.1.3 --help
-npx -y cdx-claude@0.1.3 doctor
+npx -y cdx-claude@0.1.4 --help
 ```
 
-Run public npm smoke tests outside this repository so the same-name local package cannot shadow the public package.
+Run public npm smoke tests outside this repository so the same-name local package cannot shadow the public package. A pure `npx cdx-claude@<version> doctor` is diagnostic only because the npm package intentionally does not ship Codex plugin metadata; installed-runtime readiness is proven from the Codex plugin cache after marketplace upgrade.
 
 ## MCP tools
 
@@ -63,7 +62,7 @@ Run public npm smoke tests outside this repository so the same-name local packag
 
 - `research`: read-only Claude research inside the target root.
 - `patch`: isolated git worktree edits, no shell.
-- `patch_autonomous`: isolated git worktree edits plus Bash through Claude Code native sandboxing. v0.1.3 supports this mode on macOS after a fresh sandbox canary proof.
+- `patch_autonomous`: isolated git worktree edits plus Bash through Claude Code native sandboxing. v0.1.4 supports this mode on macOS after a fresh sandbox canary proof.
 
 Every `claude_delegate_start` request requires an absolute `cwd` and an explicit `agent_role`. Call `claude_delegate_roles` first to list packaged roles. Jobs use no web tools unless `allow_web` is true.
 Starting jobs, running canaries, selecting a custom `model`, setting `allow_web: true`, or setting any non-default `max_budget_usd` value are operator-authorized actions. Codex should not set or tune `max_budget_usd` proactively, and should omit it unless the user explicitly requests a different Claude Agent SDK usage-estimate guard. Plugin default prompts intentionally avoid budget language; the skill and MCP schema only define the explicit-request-only override stance.
@@ -96,11 +95,11 @@ The ledger is a local operator data store, not a private per-thread vault. Any e
 
 `claude_delegate_stop` records `stopping`, aborts the detached worker's SDK query, and lets the worker or stale recovery write terminal `stopped` or `stale`. Cleanup is denied while a job is `starting`, `running`, or `stopping`.
 
-`cdx-claude` does not redact prompts, logs, events, diffs, or results. It is not a safety or DLP layer; data moves between Codex, local Claude Code, and local ledger files.
+`cdx-claude` is not a general safety or DLP layer; data moves between Codex, local Claude Code, and local ledger files. Public job, tail, result, diff, and canary responses redact configured auth secret values if Claude echoes them, plus product-owned worker identity. Raw ledger files, worker logs, prompts, Claude provider handling, and non-auth product data remain unredacted.
 
 `max_budget_usd` maps to the Claude Agent SDK `maxBudgetUsd` API-equivalent usage-estimate stop guard. It is not an Anthropic Console billing claim and is not subscription spend for Claude Max or Pro users. If omitted, `cdx-claude` sets `max_budget_usd` to `25`; values above `100` are rejected. The MCP schema does not publish `25` as a schema default because model callers should not fill this field unless the user explicitly asks for a different guard. Claude Code and the Claude Agent SDK own authentication, model access, provider data handling, and provider-side limits. `cdx-claude` does not broker Claude.ai login or credentials.
 
-`claude_delegate_doctor` resolves Node, Claude Code, plugin metadata, the ledger, packaged roles, and sandbox readiness from the active runtime. Node and Claude Code paths are late-bound from the current executable search path unless explicitly configured, and plugin metadata must match the active installed cache version before delegation starts.
+`claude_delegate_doctor` resolves runtime materialization, Node, Claude Code policy, auth-env status, plugin metadata, the ledger, packaged roles, and sandbox readiness from the active runtime. Node is PATH-first and ignores stale `CDX_CLAUDE_NODE_EXECUTABLE` values for executable selection, but a present retired override keeps runtime materialization red until it is removed. Claude uses the SDK bundled executable unless `CDX_CLAUDE_CODE_EXECUTABLE` is explicitly configured and valid. The doctor must report `data.ok: true` with matching package, plugin manifest, exact public marketplace cache root, and process identity before delegation starts.
 
 `cwd` must be a git project or worktree root. `cdx-claude` denies filesystem root, home, cdx-claude state, Codex state, broad user-control directories, and common credential roots before creating a ledger or worker.
 
@@ -110,6 +109,8 @@ The ledger is a local operator data store, not a private per-thread vault. Any e
 pnpm install
 pnpm verify
 uv run devtools/gate.py
+git diff --check
+pnpm release:preflight
 ```
 
 Refresh the embedded role snapshot from an installed upstream `cdx-agents` development environment:
@@ -128,16 +129,18 @@ Create a local npm tarball for plugin-launcher proof before publishing:
 
 ```bash
 pnpm pack --pack-destination /tmp/cdx-claude-pack
-CDX_CLAUDE_NPM_SPEC=/tmp/cdx-claude-pack/cdx-claude-0.1.3.tgz plugin/bin/cdx-claude --help
+CDX_CLAUDE_NPM_SPEC=/tmp/cdx-claude-pack/cdx-claude-0.1.4.tgz plugin/bin/cdx-claude --help
 ```
 
 Run a direct MCP tool-list proof through the plugin launcher:
 
 ```bash
-CDX_CLAUDE_NPM_SPEC=/tmp/cdx-claude-pack/cdx-claude-0.1.3.tgz pnpm mcp:tools-proof
+CDX_CLAUDE_NPM_SPEC=/tmp/cdx-claude-pack/cdx-claude-0.1.4.tgz pnpm mcp:tools-proof
 ```
 
 Unset `CDX_CLAUDE_NPM_SPEC` for production installed-plugin proof after npm publish. The final public runtime proof must exercise the npm package selected by `plugin/bin/cdx-claude`, not a local tarball override.
+
+After the model-visible `claude_delegate_doctor` is green, save its redacted JSON envelope and rerun `pnpm release:preflight` with `CDX_CLAUDE_MODEL_VISIBLE_DOCTOR_RECEIPT=/path/to/model-visible-doctor.json` to make the final receipt include that proof.
 
 ## Release
 
@@ -145,8 +148,8 @@ See `RELEASE.md`. The first public release requires all of:
 
 - `pnpm verify`
 - `uv run devtools/gate.py`
-- `npm publish --dry-run`
+- `pnpm release:preflight`
 - local tarball plugin launcher `--help`
-- direct plugin launcher MCP `tools/list`
+- direct plugin launcher MCP `tools/list` and schema proof
 - Codex marketplace install from a Git tag
 - one macOS local Claude sandbox canary after explicit live-run authorization

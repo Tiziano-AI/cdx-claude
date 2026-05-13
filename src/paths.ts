@@ -4,8 +4,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const PRODUCT_NAME = "cdx-claude";
-export const PLUGIN_VERSION = "0.1.3";
+export const PLUGIN_VERSION = "0.1.4";
 export const PLUGIN_ROOT_ENV = "CDX_CLAUDE_PLUGIN_ROOT";
+
+export interface PluginRootResolution {
+  plugin_root: string;
+  source: "cwd" | "configured" | "packaged" | "installed_cache" | "module_ancestor" | "fallback";
+  rejected: Array<{ source: string; path: string; reason: string }>;
+}
 
 export function stateRoot(): string {
   return process.env.CDX_CLAUDE_HOME ?? path.join(homedir(), ".codex", PRODUCT_NAME);
@@ -71,30 +77,61 @@ export function packageRoot(): string {
 }
 
 export function activePluginRoot(): string {
-  const candidates = pluginRootCandidates();
-  for (const candidate of candidates) {
-    if (isCurrentPluginRoot(candidate)) {
-      return candidate;
-    }
-  }
-  const configured = configuredPluginRoot();
-  if (configured !== undefined) {
-    return configured;
-  }
-  if (candidates.length > 0) {
-    return candidates[0] ?? path.join(packageRoot(), "plugin");
-  }
-  return path.join(packageRoot(), "plugin");
+  return resolveActivePluginRoot().plugin_root;
 }
 
-function pluginRootCandidates(): string[] {
-  return uniquePaths([
-    findPluginAncestor(process.cwd()),
-    configuredPluginRoot(),
-    path.join(packageRoot(), "plugin"),
-    installedCodexPluginRoot(),
-    findPluginAncestor(path.dirname(fileURLToPath(import.meta.url)))
-  ]);
+export function resolveActivePluginRoot(): PluginRootResolution {
+  const rejected: Array<{ source: string; path: string; reason: string }> = [];
+  const candidates = pluginRootCandidates();
+  for (const candidate of candidates) {
+    if (isCurrentPluginRoot(candidate.path)) {
+      return { plugin_root: candidate.path, source: candidate.source, rejected };
+    }
+    rejected.push({
+      source: candidate.source,
+      path: candidate.path,
+      reason: pluginRootRejectionReason(candidate.path)
+    });
+  }
+  const fallback = path.join(packageRoot(), "plugin");
+  return {
+    plugin_root: fallback,
+    source: "fallback",
+    rejected
+  };
+}
+
+function pluginRootCandidates(): Array<{
+  source: "cwd" | "configured" | "packaged" | "installed_cache" | "module_ancestor";
+  path: string;
+}> {
+  const values: Array<{
+    source: "cwd" | "configured" | "packaged" | "installed_cache" | "module_ancestor";
+    path: string | undefined;
+  }> = [
+    { source: "cwd", path: findPluginAncestor(process.cwd()) },
+    { source: "configured", path: configuredPluginRoot() },
+    { source: "packaged", path: path.join(packageRoot(), "plugin") },
+    { source: "installed_cache", path: installedCodexPluginRoot() },
+    { source: "module_ancestor", path: findPluginAncestor(path.dirname(fileURLToPath(import.meta.url))) }
+  ];
+  const seen = new Set<string>();
+  const result: Array<{
+    source: "cwd" | "configured" | "packaged" | "installed_cache" | "module_ancestor";
+    path: string;
+  }> = [];
+  for (const value of values) {
+    if (value.path === undefined) {
+      continue;
+    }
+    const resolved = path.resolve(value.path);
+    if (seen.has(resolved)) {
+      continue;
+    }
+    seen.add(resolved);
+    result.push({ source: value.source, path: resolved });
+  }
+  return result;
 }
 
 function configuredPluginRoot(): string | undefined {
@@ -107,6 +144,16 @@ function configuredPluginRoot(): string | undefined {
 
 function installedCodexPluginRoot(): string {
   return path.join(homedir(), ".codex", "plugins", "cache", PRODUCT_NAME, PRODUCT_NAME, PLUGIN_VERSION);
+}
+
+/** Returns the public marketplace cache root expected for the active release. */
+export function publicInstalledPluginRoot(): string {
+  return installedCodexPluginRoot();
+}
+
+/** Reports whether a plugin root is the public marketplace cache for the active release. */
+export function isPublicInstalledPluginRoot(pluginRoot: string): boolean {
+  return path.resolve(pluginRoot) === path.resolve(installedCodexPluginRoot());
 }
 
 function findPluginAncestor(start: string): string | undefined {
@@ -143,6 +190,25 @@ function isCurrentPluginRoot(pluginRoot: string): boolean {
   );
 }
 
+function pluginRootRejectionReason(pluginRoot: string): string {
+  const manifestPath = path.join(pluginRoot, ".codex-plugin", "plugin.json");
+  if (!existsSync(manifestPath)) {
+    return "missing plugin manifest";
+  }
+  const parsed = readPluginManifest(manifestPath);
+  if (parsed === undefined || typeof parsed !== "object" || parsed === null) {
+    return "unreadable plugin manifest";
+  }
+  if (!("name" in parsed) || parsed.name !== PRODUCT_NAME) {
+    return "plugin name does not match cdx-claude";
+  }
+  if (!("version" in parsed) || parsed.version !== PLUGIN_VERSION) {
+    const actual = "version" in parsed && typeof parsed.version === "string" ? parsed.version : "unknown";
+    return `plugin manifest version ${actual} does not match ${PLUGIN_VERSION}`;
+  }
+  return "plugin root is not current";
+}
+
 function readPluginManifest(manifestPath: string): unknown {
   try {
     return JSON.parse(readFileSync(manifestPath, "utf8"));
@@ -156,23 +222,6 @@ function readPluginManifest(manifestPath: string): unknown {
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && "code" in error;
-}
-
-function uniquePaths(values: Array<string | undefined>): string[] {
-  const seen = new Set<string>();
-  const result: string[] = [];
-  for (const value of values) {
-    if (value === undefined) {
-      continue;
-    }
-    const resolved = path.resolve(value);
-    if (seen.has(resolved)) {
-      continue;
-    }
-    seen.add(resolved);
-    result.push(resolved);
-  }
-  return result;
 }
 
 export function rolesRoot(): string {

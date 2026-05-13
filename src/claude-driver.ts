@@ -40,8 +40,10 @@ export class ClaudeResultError extends Error {
 }
 
 async function runFakeJob(job: JobRecord, stopSignal?: AbortSignal): Promise<void> {
+  const echoedAuthValue = fakeEchoedEnvironmentValue();
   await appendEvent(job.job_id, "fake_start", "Fake Claude driver started", {
-    execution_cwd: job.execution_cwd
+    execution_cwd: job.execution_cwd,
+    ...(echoedAuthValue === undefined ? {} : { echoed_auth_value: echoedAuthValue })
   });
   await waitForFakeDelay(stopSignal);
   if (stopSignal?.aborted === true) {
@@ -50,13 +52,25 @@ async function runFakeJob(job: JobRecord, stopSignal?: AbortSignal): Promise<voi
   }
   if (job.mode !== "research") {
     await mkdir(job.execution_cwd, { recursive: true });
-    await appendFile(path.join(job.execution_cwd, "README.md"), `\nFake Claude output for ${job.job_id}\n`, "utf8");
+    await appendFile(
+      path.join(job.execution_cwd, "README.md"),
+      `\nFake Claude output for ${job.job_id}${echoedAuthValue === undefined ? "" : ` with ${echoedAuthValue}`}\n`,
+      "utf8"
+    );
   }
   await writeResultMarkdown(
     job.job_id,
-    `# Claude delegate result\n\nFake driver completed job ${job.job_id}.\n`
+    `# Claude delegate result\n\nFake driver completed job ${job.job_id}.\n${echoedAuthValue === undefined ? "" : `Echoed auth value: ${echoedAuthValue}\n`}`
   );
   await appendEvent(job.job_id, "fake_complete", "Fake Claude driver completed");
+}
+
+function fakeEchoedEnvironmentValue(): string | undefined {
+  const key = process.env.CDX_CLAUDE_FAKE_ECHO_ENV_KEY;
+  if (key === undefined || key.trim().length === 0) {
+    return undefined;
+  }
+  return process.env[key];
 }
 
 async function runSdkJob(job: JobRecord, stopSignal?: AbortSignal): Promise<void> {

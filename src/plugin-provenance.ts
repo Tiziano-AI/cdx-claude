@@ -7,20 +7,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { DoctorCheck } from "./contracts.js";
 import { errorMessage } from "./errors.js";
 import { PLUGIN_VERSION } from "./paths.js";
-
-const EXPECTED_TOOLS = [
-  "claude_delegate_cleanup",
-  "claude_delegate_diff",
-  "claude_delegate_doctor",
-  "claude_delegate_list",
-  "claude_delegate_result",
-  "claude_delegate_roles",
-  "claude_delegate_sandbox_canary",
-  "claude_delegate_start",
-  "claude_delegate_status",
-  "claude_delegate_stop",
-  "claude_delegate_tail"
-];
+import { EXPECTED_TOOL_NAMES } from "./tool-names.js";
 
 interface PluginManifest {
   name: string | undefined;
@@ -94,7 +81,7 @@ export async function installedMcpToolsCheck(pluginRoot: string): Promise<Doctor
     await client.connect(transport);
     const listed = await client.listTools();
     const names = listed.tools.map((tool) => tool.name).sort();
-    const ok = JSON.stringify(names) === JSON.stringify(EXPECTED_TOOLS);
+    const ok = JSON.stringify(names) === JSON.stringify(EXPECTED_TOOL_NAMES);
     return {
       ok,
       summary: ok ? "installed launcher exposes only wrapper tools" : "installed launcher tool surface drifted",
@@ -171,7 +158,8 @@ async function launcherCheck(pluginRoot: string): Promise<DoctorCheck> {
     content.includes("CDX_CLAUDE_NPM_SPEC") &&
     content.includes("npm") &&
     !content.includes("node_modules/") &&
-    !content.includes("@anthropic-ai/claude-agent-sdk");
+      !content.includes("@anthropic-ai/claude-agent-sdk") &&
+      !content.includes("CDX_CLAUDE_NODE_EXECUTABLE");
   return {
     ok,
     summary: ok ? "plugin launcher is a small pinned npm launcher" : "plugin launcher is not the expected npm launcher",
@@ -186,7 +174,7 @@ async function launcherCheck(pluginRoot: string): Promise<DoctorCheck> {
 
 async function forbiddenPathCheck(pluginRoot: string): Promise<DoctorCheck> {
   const forbidden = [
-    path.join("/", "Users", "tiziano", "Code", "cdx-claude"),
+    process.cwd(),
     path.join("dist", "src", "cli.js"),
     path.join("dist", "src", "mcp-server.js"),
     path.join("dist", "src", "worker.js")

@@ -3,6 +3,7 @@ import { access, readFile, stat } from "node:fs/promises";
 import { constants } from "node:fs";
 import path from "node:path";
 import test from "node:test";
+import { PLUGIN_VERSION } from "../src/paths.js";
 
 test("plugin MCP config uses the installed cache-relative launcher", async () => {
   const raw = await readFile(path.join("plugin", ".mcp.json"), "utf8");
@@ -46,7 +47,7 @@ test("plugin package has one executable public binary and no source-anchored lau
   assert.match(launcherContent, new RegExp(`cdx-claude@${packageVersion.replaceAll(".", "\\.")}`));
   assert.match(launcherContent, /CDX_CLAUDE_NPM_SPEC/);
   assert.match(launcherContent, /CDX_CLAUDE_AUTH_ENV_FILE/);
-  assert.match(launcherContent, /CDX_CLAUDE_NODE_EXECUTABLE/);
+  assert.doesNotMatch(launcherContent, /CDX_CLAUDE_NODE_EXECUTABLE/);
   assert.match(launcherContent, /CDX_CLAUDE_PLUGIN_ROOT: process\.cwd\(\)/);
   assert.doesNotMatch(launcherContent, /CDX_CLAUDE_PLUGIN_ROOT: process\.env\.CDX_CLAUDE_PLUGIN_ROOT \?\? process\.cwd\(\)/);
   assert.match(launcherContent, /npm/);
@@ -120,8 +121,34 @@ test("plugin skill tells Codex to leave the usage guard on the default path", as
   assert.match(skill, /Do not set or tune `max_budget_usd` proactively/);
   assert.match(skill, /Omit it unless the user explicitly requests/);
   assert.match(skill, /built-in default is `25`/);
-  assert.match(skill, /do not start delegation while doctor reports red runtime checks/);
+  assert.match(skill, /`claude_delegate_doctor` returns `data\.ok === true`/);
   assert.doesNotMatch(openaiYaml, /max_budget_usd|usage guard|budget/i);
   assert.ok(pluginJson.interface?.defaultPrompt?.every((prompt) => !prompt.includes("max_budget_usd")));
   assert.ok(pluginJson.interface?.defaultPrompt?.every((prompt) => !/usage guard|budget/i.test(prompt)));
+});
+
+test("release preflight script exists and points at the current release identity", async () => {
+  const script = await readFile(path.join("scripts", "release-preflight.mjs"), "utf8");
+  assert.match(script, /release_identity_alignment/);
+  assert.match(script, /model_visible_mcp_doctor/);
+  assert.match(script, /expected_public_cache_root/);
+  assert.match(script, /parseCodexMcpCwd/);
+  assert.match(script, /local_personal_observed/);
+  assert.match(script, /installed_cache_mcp_tools_schema/);
+  assert.match(script, /installed_cache_doctor/);
+  assert.match(script, /CDX_CLAUDE_MODEL_VISIBLE_DOCTOR_RECEIPT/);
+  assert.match(script, /CDX_CLAUDE_NPM_SPEC/);
+  assert.match(script, new RegExp(`v\\$\\{version\\}`));
+  assert.equal(PLUGIN_VERSION.length > 0, true);
+});
+
+test("public docs keep npm smoke separate from installed plugin doctor proof", async () => {
+  const readme = await readFile("README.md", "utf8");
+  const release = await readFile("RELEASE.md", "utf8");
+  const docs = `${readme}\n${release}`;
+  assert.doesNotMatch(docs, /npx -y cdx-claude@\S+ doctor/);
+  assert.match(docs, /Pure npm `doctor` is diagnostic/);
+  assert.match(docs, /Codex plugin cache/);
+  assert.match(docs, /scripts\/assert-mcp-tools\.mjs/);
+  assert.match(docs, /CDX_CLAUDE_MODEL_VISIBLE_DOCTOR_RECEIPT/);
 });

@@ -4,7 +4,7 @@ Report security issues privately through the GitHub security advisory flow for `
 
 ## Boundary
 
-`cdx-claude` is not a secret scanner, redaction layer, or DLP product. It coordinates local Codex, local Claude Code, local Git worktrees, and local ledger files.
+`cdx-claude` is not a secret scanner or general DLP product. It coordinates local Codex, local Claude Code, local Git worktrees, and local ledger files. Public response projections redact configured auth secret values and product-owned worker identity, but raw ledger files, worker logs, prompts, Claude provider handling, and non-auth product data remain unredacted.
 
 The authority boundary is:
 
@@ -23,8 +23,8 @@ The sandbox canary checks denied parent-read behavior with a non-secret nonce, o
 
 Job ledgers are shared local operator state. Any enabled Codex session that can call this plugin can inspect persisted cdx-claude jobs until cleanup removes them. Treat the ledger as local product data with explicit retention through `claude_delegate_cleanup`, not as per-thread confidential storage.
 
-Plugin-launched API or cloud-provider credentials flow through `CDX_CLAUDE_AUTH_ENV_FILE`. That variable contains a local file path only. The runtime reads allowlisted auth rows from the file after npm launches the package; unknown rows are rejected so auth typos fail closed. Credential values are passed to Claude Code/SDK execution and are not product-redacted from provider handling by cdx-claude.
+Plugin-launched API or cloud-provider credentials flow through `CDX_CLAUDE_AUTH_ENV_FILE`. That variable contains a local file path only. The runtime reads allowlisted auth rows from an absolute regular non-symlink file with mode `0600` after npm launches the package; unknown rows are rejected so auth typos fail closed. Credential values are passed to Claude Code/SDK execution and are redacted from cdx-claude public response projections if echoed, but they are not redacted from provider handling or raw local ledger/log artifacts.
 
-## Supported v0.1.3 proof
+## Supported v0.1.4 proof
 
 `patch_autonomous` is supported on macOS after `claude_delegate_sandbox_canary` proves the current local runtime. Linux and Windows are experimental until direct release proof exists.

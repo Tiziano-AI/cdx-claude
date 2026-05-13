@@ -6,6 +6,8 @@ import test from "node:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { runRequired } from "../src/process-runner.js";
+import { PLUGIN_VERSION } from "../src/paths.js";
+import { EXPECTED_TOOL_NAMES } from "../src/tool-names.js";
 
 test("mcp tools list exposes only the wrapper delegation tools", async () => {
   const transport = new StdioClientTransport({
@@ -20,24 +22,12 @@ test("mcp tools list exposes only the wrapper delegation tools", async () => {
     },
     stderr: "pipe"
   });
-  const client = new Client({ name: "cdx-claude-test", version: "0.1.3" });
+  const client = new Client({ name: "cdx-claude-test", version: PLUGIN_VERSION });
   try {
     await client.connect(transport);
     const tools = await client.listTools();
     const names = tools.tools.map((tool) => tool.name).sort();
-    assert.deepEqual(names, [
-      "claude_delegate_cleanup",
-      "claude_delegate_diff",
-      "claude_delegate_doctor",
-      "claude_delegate_list",
-      "claude_delegate_result",
-      "claude_delegate_roles",
-      "claude_delegate_sandbox_canary",
-      "claude_delegate_start",
-      "claude_delegate_status",
-      "claude_delegate_stop",
-      "claude_delegate_tail"
-    ]);
+    assert.deepEqual(names, EXPECTED_TOOL_NAMES);
     const startTool = tools.tools.find((tool) => tool.name === "claude_delegate_start");
     assert.deepEqual(startTool?.inputSchema.required, ["cwd", "prompt", "mode", "agent_role"]);
     const startProperties = startTool?.inputSchema.properties as Record<string, { default?: unknown; description?: string }> | undefined;
@@ -66,7 +56,7 @@ test("mcp tool calls return stable success and denial envelopes", async () => {
     },
     stderr: "pipe"
   });
-  const client = new Client({ name: "cdx-claude-test", version: "0.1.3" });
+  const client = new Client({ name: "cdx-claude-test", version: PLUGIN_VERSION });
   try {
     await client.connect(transport);
     const success = await client.callTool({ name: "claude_delegate_roles", arguments: {} });
@@ -98,12 +88,14 @@ test("mcp invalid inputs return product failure envelopes", async () => {
     },
     stderr: "pipe"
   });
-  const client = new Client({ name: "cdx-claude-test", version: "0.1.3" });
+  const client = new Client({ name: "cdx-claude-test", version: PLUGIN_VERSION });
   try {
     await client.connect(transport);
     for (const call of [
       { name: "claude_delegate_start", arguments: { cwd: ".", prompt: "x", mode: "research" } },
       { name: "claude_delegate_start", arguments: { cwd: ".", prompt: "x", mode: "research", agent_role: "workflow_ledger" } },
+      { name: "claude_delegate_start", arguments: { cwd: "/tmp", prompt: "x", mode: "research", agent_role: "workflow_ledger", max_budget_usd: 0 } },
+      { name: "claude_delegate_start", arguments: { cwd: "/tmp", prompt: "x", mode: "research", agent_role: "workflow_ledger", max_budget_usd: 101 } },
       { name: "claude_delegate_status", arguments: { job_id: "../../outside" } },
       { name: "claude_delegate_start", arguments: { cwd: "/tmp", prompt: "x", mode: "research", agent_role: "not_a_real_role" } },
       { name: "claude_delegate_roles", arguments: { extra: true } },
@@ -140,7 +132,7 @@ test("mcp start/status/result/cleanup works through the public wrapper", async (
     },
     stderr: "pipe"
   });
-  const client = new Client({ name: "cdx-claude-positive-test", version: "0.1.3" });
+  const client = new Client({ name: "cdx-claude-positive-test", version: PLUGIN_VERSION });
   try {
     await client.connect(transport);
     const started = await client.callTool({

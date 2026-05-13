@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.4
+
+- Adds runtime materialization to doctor so source version, npm package version, plugin manifest version, installed cache root, process identity, Node policy, Claude executable policy, auth-env status, and remediation are reported from one canonical context.
+- Makes the Claude Agent SDK bundled executable the default and treats `CDX_CLAUDE_CODE_EXECUTABLE` as an explicit validated override.
+- Retires `CDX_CLAUDE_NODE_EXECUTABLE` as a launcher/runtime override; Node is resolved from the current executable search path before falling back to the running process executable.
+- Adds strict `CDX_CLAUDE_AUTH_ENV_FILE` validation with key-name-only doctor output, mode `0600` enforcement, broad-dotenv rejection, and pre-ledger delegation denial for invalid configured auth files.
+- Adds `pnpm release:preflight` for redacted release receipts covering source gates, version identity, tarball proof, MCP tools/schema, doctor proof, registry/install observations, and pending model-visible proof rows.
+- Updates the skill to require a green model-visible doctor with matching runtime/plugin versions before delegation starts.
+
 ## 0.1.3
 
 - Resolves Node from the current executable search path before falling back to `process.execPath`, so long-lived MCP sessions do not retain stale Homebrew Cellar paths.

@@ -21,10 +21,10 @@ import {
 } from "./contracts.js";
 import { failureEnvelope, successEnvelope } from "./envelope.js";
 import { UserVisibleError } from "./errors.js";
+import { doctor } from "./doctor.js";
 import {
   cleanupDelegation,
   diffDelegation,
-  doctor,
   listDelegations,
   listRoles,
   resultDelegation,
@@ -35,6 +35,7 @@ import {
   tailDelegation
 } from "./service.js";
 import { PLUGIN_VERSION } from "./paths.js";
+import { EXPECTED_TOOL_NAMES } from "./tool-names.js";
 
 const EMPTY_INPUT_SCHEMA = {
   type: "object",
@@ -238,6 +239,11 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
     }
   }
 ];
+
+const TOOL_DEFINITION_NAMES = TOOL_DEFINITIONS.map((tool) => tool.name).sort();
+if (JSON.stringify(TOOL_DEFINITION_NAMES) !== JSON.stringify(EXPECTED_TOOL_NAMES)) {
+  throw new Error("MCP tool definitions drifted from EXPECTED_TOOL_NAMES");
+}
 
 /** Starts the cdx-claude MCP wrapper server on stdio. */
 export async function serveMcp(): Promise<void> {

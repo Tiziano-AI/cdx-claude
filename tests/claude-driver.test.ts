@@ -42,8 +42,22 @@ test("sdk options forward the API-equivalent usage guard", () => {
   assert.equal(options.maxBudgetUsd, 25);
 });
 
-test("sdk options pass the resolved local Claude Code executable", async () => {
-  const originalPath = process.env.PATH;
+test("sdk options omit the Claude executable unless an explicit override is configured", async () => {
+  const originalExecutable = process.env.CDX_CLAUDE_CODE_EXECUTABLE;
+  delete process.env.CDX_CLAUDE_CODE_EXECUTABLE;
+  try {
+    const options = buildClaudeOptionsForJob(jobRecord({}), new AbortController());
+    assert.equal(options.pathToClaudeCodeExecutable, undefined);
+  } finally {
+    if (originalExecutable === undefined) {
+      delete process.env.CDX_CLAUDE_CODE_EXECUTABLE;
+    } else {
+      process.env.CDX_CLAUDE_CODE_EXECUTABLE = originalExecutable;
+    }
+  }
+});
+
+test("sdk options pass only an explicit local Claude Code executable override", async () => {
   const originalExecutable = process.env.CDX_CLAUDE_CODE_EXECUTABLE;
   const directory = path.join(tmpdir(), `cdx-claude-executable-${process.pid}`);
   const executable = path.join(directory, "claude");
@@ -52,16 +66,10 @@ test("sdk options pass the resolved local Claude Code executable", async () => {
   await writeFile(executable, "#!/bin/sh\nexit 0\n", "utf8");
   await chmod(executable, 0o755);
   try {
-    process.env.PATH = directory;
-    delete process.env.CDX_CLAUDE_CODE_EXECUTABLE;
+    process.env.CDX_CLAUDE_CODE_EXECUTABLE = executable;
     const options = buildClaudeOptionsForJob(jobRecord({}), new AbortController());
     assert.equal(options.pathToClaudeCodeExecutable, executable);
   } finally {
-    if (originalPath === undefined) {
-      delete process.env.PATH;
-    } else {
-      process.env.PATH = originalPath;
-    }
     if (originalExecutable === undefined) {
       delete process.env.CDX_CLAUDE_CODE_EXECUTABLE;
     } else {
@@ -77,6 +85,7 @@ test("auth env files pass only allowlisted Claude provider keys", async () => {
   await rm(directory, { recursive: true, force: true });
   await mkdir(directory, { recursive: true });
   await writeFile(authFile, "ANTHROPIC_API_KEY='test-key'\nCLAUDE_CODE_USE_VERTEX=true\n", "utf8");
+  await chmod(authFile, 0o600);
   try {
     const env = await authEnvironmentFromFile(authFile);
     assert.deepEqual(env, {
@@ -84,6 +93,7 @@ test("auth env files pass only allowlisted Claude provider keys", async () => {
       CLAUDE_CODE_USE_VERTEX: "true"
     });
     await writeFile(authFile, "NOT_ALLOWED=value\n", "utf8");
+    await chmod(authFile, 0o600);
     await assert.rejects(() => authEnvironmentFromFile(authFile), /unsupported Claude auth env key/);
     await assert.rejects(() => authEnvironmentFromFile("relative.env"), /absolute path/);
   } finally {

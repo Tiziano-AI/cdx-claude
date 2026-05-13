@@ -41,6 +41,7 @@ test("cli doctor falls back from an invalid plugin root without throwing interna
   assert.equal(parsed.data.claude.ok, false);
   assert.equal(parsed.data.plugin.ok, true);
   assert.equal(parsed.meta.command, "doctor");
+  assert.equal(result.stdout.includes(process.cwd()), false);
 });
 
 test("cli doctor reports ledger failures inside the readiness report", async () => {

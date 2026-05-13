@@ -1,46 +1,31 @@
 # Release
 
-The release identity is one semver value shared by `package.json`, `plugin/.codex-plugin/plugin.json`, the plugin launcher npm spec, the marketplace ref, npm publish, and the Git tag.
+The release identity is one semver value shared by `package.json`, `plugin/.codex-plugin/plugin.json`, the plugin launcher npm spec, `.agents/plugins/marketplace.json`, npm publish, the Git tag, the installed plugin cache, and the model-visible MCP doctor.
 
 ## Preflight
+
+Run the canonical source and candidate proof before publishing:
 
 ```bash
 pnpm install
 pnpm verify
 uv run devtools/gate.py
-npm publish --dry-run
+git diff --check
+pnpm release:preflight
 ```
 
-Create a local tarball and prove the plugin launcher uses it:
+`pnpm release:preflight` emits a redacted JSON receipt. It proves source gates, version alignment, npm dry-run packaging, a `pnpm pack` tarball fingerprint, tarball launcher help, MCP tools/schema, and tarball doctor. It also records npm registry identity, the active Codex MCP row, installed-cache launcher/tools/schema/doctor state when that cache exists, and the model-visible MCP doctor row. A zero exit proves `source_candidate_ok`, not final release completion. Missing post-publish surfaces are reported as pending until `public_installed_complete` is true.
 
-```bash
-PACK_DIR=$(mktemp -d)
-pnpm pack --pack-destination "$PACK_DIR"
-CDX_CLAUDE_NPM_SPEC="$PACK_DIR/cdx-claude-0.1.3.tgz" plugin/bin/cdx-claude --help
-```
-
-Run direct MCP `tools/list` through `plugin/bin/cdx-claude mcp serve` with `CDX_CLAUDE_NPM_SPEC` pointing at the local tarball and assert only the wrapper tools are present.
-
-```bash
-CDX_CLAUDE_NPM_SPEC="$TARBALL" pnpm mcp:tools-proof
-```
-
-Run `doctor` through the same tarball. In npm-runtime-only mode, the plugin check can report `ok:false` when plugin metadata is unavailable, but the command returns a structured success envelope with `data.ok:false` instead of an internal error.
-
-```bash
-CDX_CLAUDE_NPM_SPEC="$TARBALL" plugin/bin/cdx-claude doctor
-```
-
-`CDX_CLAUDE_NPM_SPEC` is release-candidate proof only. Unset it for the final installed Codex proof after npm publish so the launcher resolves the public npm package selected by its pinned version.
+`CDX_CLAUDE_NPM_SPEC` is release-candidate proof only. Unset it for final installed Codex proof after npm publish so the launcher resolves the public npm package selected by its pinned version.
 
 ## GitHub
 
-Push `main` and tag `v0.1.3` only after preflight passes.
+Push `main` and tag `v0.1.4` only after preflight passes.
 
 ```bash
-gh repo create Tiziano-AI/cdx-claude --public --source . --remote origin --push
-git tag v0.1.3
-git push origin v0.1.3
+git tag v0.1.4
+git push origin main
+git push origin v0.1.4
 ```
 
 ## npm
@@ -48,24 +33,44 @@ git push origin v0.1.3
 The npm package name is `cdx-claude`.
 
 ```bash
-npm login
 npm publish --access public
-npx -y cdx-claude@0.1.3 --help
+cd /tmp
+npx -y cdx-claude@0.1.4 --help
 ```
 
-If `cdx-claude` is unavailable at publish time, stop and choose a new package name before changing the plugin launcher.
+Run public npm smoke tests outside this repository so the same-name local package cannot shadow the public package. Pure npm `doctor` is diagnostic, not installed-plugin readiness proof, because the npm package intentionally does not ship Codex plugin metadata.
 
 ## Codex install proof
 
+Use one marketplace source identity. This repository uses the Git URL source:
+
 ```bash
-codex plugin marketplace add Tiziano-AI/cdx-claude --ref v0.1.3
+codex plugin marketplace add https://github.com/Tiziano-AI/cdx-claude.git --ref v0.1.4
+codex plugin marketplace upgrade cdx-claude
 codex mcp get cdx-claude
 ```
 
-Then run direct installed-cache MCP `tools/list` and one macOS `claude_delegate_sandbox_canary` live proof.
-The active MCP row must resolve to `~/.codex/plugins/cache/cdx-claude/cdx-claude/0.1.3/`. Any older `cdx-claude@local-personal` install is legacy inventory and must be disabled or uninstalled through Codex plugin controls before claiming public runtime proof.
+The active MCP row must resolve exactly to `~/.codex/plugins/cache/cdx-claude/cdx-claude/0.1.4/`. A same-version `local-personal/.../cdx-claude/0.1.4/` cache is not public runtime proof. Any older `cdx-claude@local-personal` install is legacy inventory and must stay disabled or be removed through Codex plugin controls before claiming public runtime proof.
 
-The installed-cache proof has two distinct phases:
+Final public-runtime proof has `CDX_CLAUDE_NPM_SPEC` unset and includes:
 
-- release-candidate proof: run the installed cache launcher with `CDX_CLAUDE_NPM_SPEC` pointing at the local tarball before npm publish;
-- public-runtime proof: after npm publish, run `npx -y cdx-claude@0.1.3 --help`, installed-cache MCP `tools/list`, `doctor`, and the sandbox canary with `CDX_CLAUDE_NPM_SPEC` unset.
+```bash
+unset CDX_CLAUDE_NPM_SPEC
+pnpm release:preflight
+codex mcp get cdx-claude
+~/.codex/plugins/cache/cdx-claude/cdx-claude/0.1.4/bin/cdx-claude --help
+~/.codex/plugins/cache/cdx-claude/cdx-claude/0.1.4/bin/cdx-claude doctor
+node scripts/assert-mcp-tools.mjs ~/.codex/plugins/cache/cdx-claude/cdx-claude/0.1.4/bin/cdx-claude ~/.codex/plugins/cache/cdx-claude/cdx-claude/0.1.4
+```
+
+Then run the model-visible `claude_delegate_doctor`. It must report the current runtime version, installed plugin root, auth-env status, Node policy, Claude executable policy, and `data.ok: true`. A macOS `claude_delegate_sandbox_canary` is required only when autonomous sandbox behavior changes.
+
+To fold model-visible proof into the release receipt, save the redacted `claude_delegate_doctor` JSON envelope and rerun:
+
+```bash
+CDX_CLAUDE_MODEL_VISIBLE_DOCTOR_RECEIPT=/path/to/model-visible-doctor.json pnpm release:preflight
+```
+
+## Rollback
+
+Rollback uses immutable release identities. Repoint the marketplace ref to the last known-good tag, run `codex plugin marketplace upgrade cdx-claude`, verify `codex mcp get cdx-claude`, run direct installed-cache doctor, then run the model-visible doctor. Do not rewrite Git tags or unpublish npm packages as rollback.

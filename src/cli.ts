@@ -13,10 +13,10 @@ import { failureEnvelope, successEnvelope } from "./envelope.js";
 import { UserVisibleError } from "./errors.js";
 import { serveMcp } from "./mcp-server.js";
 import { runWorker } from "./worker.js";
+import { doctor } from "./doctor.js";
 import {
   cleanupDelegation,
   diffDelegation,
-  doctor,
   listDelegations,
   listRoles,
   resultDelegation,

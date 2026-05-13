@@ -6,7 +6,6 @@ import {
   CleanupRequest,
   DEFAULT_SDK_USAGE_GUARD_USD,
   DiffReport,
-  DoctorReport,
   EventRecord,
   JobRecord,
   JobView,
@@ -42,21 +41,13 @@ import {
   updateJob
 } from "./ledger.js";
 import {
-  activePluginRoot,
   diffPath,
-  jobsRoot,
-  packageRoot,
   PLUGIN_VERSION,
-  rolesManifestPath,
-  rolesRoot,
-  stateRoot,
   tempPath
 } from "./paths.js";
-import { runCommand, runRequired } from "./process-runner.js";
-import { pluginPackageCheck } from "./plugin-provenance.js";
+import { runRequired } from "./process-runner.js";
 import { nowIso } from "./time.js";
-import { CLAUDE_CODE_EXECUTABLE_ENV, resolveClaudeCodeExecutablePath } from "./claude-executable.js";
-import { resolveNodeExecutable } from "./executable.js";
+import { assertRuntimeReadyForDelegation } from "./runtime-materialization.js";
 import { workerTokenHash } from "./identity.js";
 import { toJobView } from "./job-view.js";
 import { toPublicEvents } from "./event-view.js";
@@ -66,13 +57,21 @@ import {
   sandboxCanaryMarkers,
   sandboxCanaryProofPaths
 } from "./sandbox-canary.js";
-import { sandboxCheck, sandboxPlatformSupported } from "./sandbox-support.js";
+import { sandboxPlatformSupported } from "./sandbox-support.js";
 import { spawnWorker } from "./worker-launch.js";
+import {
+  redactAuthSecretsInDiffReport,
+  redactAuthSecretsInEvents,
+  redactAuthSecretsInJobView,
+  redactAuthSecretsInResultReport,
+  redactAuthSecretsInSandboxCanaryReport
+} from "./auth-redaction.js";
 
 export async function startJob(request: StartRequest): Promise<JobView> {
   if (!path.isAbsolute(request.cwd)) {
     throw new UserVisibleError("cwd must be an absolute path.");
   }
+  await assertRuntimeReadyForDelegation();
   if (request.mode === "patch_autonomous" && !sandboxPlatformSupported()) {
     throw new UserVisibleError(`patch_autonomous is supported only on macOS in cdx-claude v${PLUGIN_VERSION}.`, {
       code: "sandbox_platform_unsupported",
@@ -121,7 +120,7 @@ export async function startJob(request: StartRequest): Promise<JobView> {
     cwd,
     execution_cwd: executionCwd
   });
-  const workerPid = spawnWorker(jobId, workerToken);
+  const workerPid = await spawnWorker(jobId, workerToken);
   const started = await updateJob(jobId, {
     worker_pid: workerPid,
     worker_started_at: nowIso()
@@ -129,7 +128,7 @@ export async function startJob(request: StartRequest): Promise<JobView> {
   await appendEvent(jobId, "worker_started", "Detached worker started", {
     worker_pid: workerPid
   });
-  return toJobView(started);
+  return redactAuthSecretsInJobView(toJobView(started));
 }
 
 export async function listRoles(): Promise<RoleReport> {
@@ -177,11 +176,11 @@ export async function sandboxCanary(request: SandboxCanaryRequest): Promise<Sand
     sandbox_canary_worktree_probe_path: proofPaths.worktree_probe_path,
     sandbox_canary_denied_read_path: deniedReadPath
   });
-  return {
+  return redactAuthSecretsInSandboxCanaryReport({
     job: toJobView(updated),
     expected_markers: sandboxCanaryMarkers(),
     proof_paths: proofPaths
-  };
+  });
 }
 
 async function createCanaryRepo(): Promise<string> {
@@ -197,16 +196,17 @@ async function createCanaryRepo(): Promise<string> {
 }
 
 export async function statusJob(jobId: string): Promise<JobView> {
-  return toJobView(await refreshStaleJob(await readJob(jobId)));
+  return redactAuthSecretsInJobView(toJobView(await refreshStaleJob(await readJob(jobId))));
 }
 
 export async function listDelegations(limit: number, status?: string): Promise<JobView[]> {
-  return (await listJobs(limit, status)).map(toJobView);
+  const views = (await listJobs(limit, status)).map(toJobView);
+  return Promise.all(views.map((view) => redactAuthSecretsInJobView(view)));
 }
 
 export async function tailDelegation(jobId: string, limit: number, afterSeq?: number): Promise<EventRecord[]> {
   await statusJob(jobId);
-  return toPublicEvents(await tailEvents(jobId, limit, afterSeq));
+  return redactAuthSecretsInEvents(toPublicEvents(await tailEvents(jobId, limit, afterSeq)));
 }
 
 export async function resultDelegation(jobId: string): Promise<ResultReport> {
@@ -215,13 +215,13 @@ export async function resultDelegation(jobId: string): Promise<ResultReport> {
   const receipt = await readReceipt(jobId);
   const diffAvailable = (await readTextIfExists(diffPath(jobId))).length > 0;
   const sandboxProof = await maybeSandboxCanaryProof(job, resultMarkdown);
-  return {
+  return redactAuthSecretsInResultReport({
     job,
     result_markdown: resultMarkdown,
     receipt,
     diff_available: diffAvailable,
     ...(sandboxProof === undefined ? {} : { sandbox_canary_proof: sandboxProof })
-  };
+  });
 }
 
 export async function diffDelegation(jobId: string): Promise<DiffReport> {
@@ -236,34 +236,34 @@ export async function diffDelegation(jobId: string): Promise<DiffReport> {
   });
   await updateJob(job.job_id, {});
   await markReceiptDiffExported(job.job_id);
-  return {
+  return redactAuthSecretsInDiffReport({
     job: toJobView(await readJob(job.job_id)),
     diff,
     diff_path: diffPath(job.job_id)
-  };
+  });
 }
 
 export async function stopDelegation(jobId: string): Promise<JobView> {
   const job = await refreshStaleJob(await readJob(jobId));
   if (isTerminalStatus(job.status) || job.status === "stopping") {
-    return toJobView(job);
+    return redactAuthSecretsInJobView(toJobView(job));
   }
   if (job.worker_pid === undefined) {
-    return toJobView(await updateJob(jobId, {
+    return redactAuthSecretsInJobView(toJobView(await updateJob(jobId, {
       status: "stale",
       terminal_at: nowIso(),
       terminal_reason: "worker pid is missing",
       error: "worker pid is missing"
-    }));
+    })));
   }
   const current = await readJob(jobId);
   if (current.worker_pid === undefined || current.worker_token_hash === undefined) {
-    return toJobView(await updateJob(jobId, {
+    return redactAuthSecretsInJobView(toJobView(await updateJob(jobId, {
       status: "stale",
       terminal_at: nowIso(),
       terminal_reason: "worker identity is incomplete",
       error: "worker identity is incomplete"
-    }));
+    })));
   }
   const stopping = await updateJob(jobId, {
     status: "stopping",
@@ -273,18 +273,18 @@ export async function stopDelegation(jobId: string): Promise<JobView> {
   try {
     process.kill(current.worker_pid, "SIGTERM");
     await appendEvent(jobId, "stop_requested", "Stop signal sent", { worker_pid: current.worker_pid });
-    return toJobView(stopping);
+    return redactAuthSecretsInJobView(toJobView(stopping));
   } catch (error) {
     if (errorCode(error) === "ESRCH") {
       await appendEvent(jobId, "worker_stale", "Worker process is no longer alive", {
         worker_pid: current.worker_pid
       });
-      return toJobView(await updateJob(jobId, {
+      return redactAuthSecretsInJobView(toJobView(await updateJob(jobId, {
         status: "stale",
         terminal_at: nowIso(),
         terminal_reason: "worker process is no longer alive",
         error: "worker process is no longer alive"
-      }));
+      })));
     }
     throw error;
   }
@@ -327,67 +327,6 @@ export async function cleanupDelegation(request: CleanupRequest): Promise<{ job_
   return { job_id: job.job_id, removed_worktree: removedWorktree, removed_ledger: false };
 }
 
-export async function doctor(): Promise<DoctorReport> {
-  const claude = await claudeRuntimeCheck();
-  const node = await nodeRuntimeCheck();
-  const ledger = await ledgerCheck();
-  const roles = await rolesCheck();
-  const plugin = await pluginPackageCheck(activePluginRoot());
-  const sandbox = sandboxCheck();
-  return {
-    ok: claude.ok && node.ok && ledger.ok && roles.ok && plugin.ok && sandbox.ok,
-    claude,
-    node,
-    ledger,
-    roles,
-    plugin,
-    sandbox
-  };
-}
-
-async function nodeRuntimeCheck() {
-  const resolution = resolveNodeExecutable();
-  const check = await commandCheck(resolution.executable, ["--version"]);
-  return {
-    ...check,
-    details: {
-      ...check.details,
-      resolution_source: resolution.source,
-      ...(resolution.env_key === undefined ? {} : { env_key: resolution.env_key }),
-      ...(resolution.current_exec_path === undefined ? {} : { current_exec_path: resolution.current_exec_path })
-    }
-  };
-}
-
-async function claudeRuntimeCheck() {
-  const executable = resolveClaudeCodeExecutablePath();
-  if (executable === undefined) {
-    return {
-      ok: true,
-      summary: "Claude Agent SDK bundled executable will be used",
-      details: { executable: "sdk-bundled", override_env: CLAUDE_CODE_EXECUTABLE_ENV }
-    };
-  }
-  return commandCheck(executable, ["--version"]);
-}
-
-async function ledgerCheck() {
-  try {
-    await mkdir(jobsRoot(), { recursive: true });
-    return {
-      ok: true,
-      summary: "ledger root is writable",
-      details: { state_root: stateRoot(), jobs_root: jobsRoot() }
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      summary: error instanceof Error ? error.message : "ledger root is not writable",
-      details: { state_root: stateRoot(), jobs_root: jobsRoot() }
-    };
-  }
-}
-
 function buildJobRecord(input: {
   jobId: string;
   request: StartRequest;
@@ -426,38 +365,4 @@ function buildJobRecord(input: {
     ...(input.worktree === undefined ? {} : { worktree_path: input.worktree }),
     ...(input.request.model === undefined ? {} : { model: input.request.model })
   };
-}
-
-async function commandCheck(command: string, args: string[]) {
-  try {
-    const result = await runCommand(command, args, process.cwd());
-    return {
-      ok: result.exit_code === 0,
-      summary: result.exit_code === 0 ? result.stdout.trim() : result.stderr.trim(),
-      details: { command, args, exit_code: result.exit_code }
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      summary: error instanceof Error ? error.message : "command check failed",
-      details: { command, args, exit_code: 127 }
-    };
-  }
-}
-
-async function rolesCheck() {
-  try {
-    const report = await roleReport();
-    return {
-      ok: report.roles.length > 0,
-      summary: `${report.roles.length} packaged delegate roles available`,
-      details: { manifest: rolesManifestPath(), roles_root: rolesRoot(), role_count: report.roles.length, source: report.source }
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      summary: error instanceof Error ? error.message : "packaged role catalogue is unavailable",
-      details: { manifest: rolesManifestPath(), package_root: packageRoot() }
-    };
-  }
 }

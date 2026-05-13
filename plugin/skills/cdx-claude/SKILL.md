@@ -11,7 +11,7 @@ Use this skill when Codex needs Claude Code as a servant delegate.
 
 - Codex remains the authority owner.
 - Start delegates with `claude_delegate_start`; do not call raw `claude mcp serve` tools as the product path.
-- Run `claude_delegate_doctor` before starting delegation when the plugin was just installed, upgraded, or restarted, or when runtime readiness is unknown; do not start delegation while doctor reports red runtime checks.
+- Run `claude_delegate_doctor` before starting delegation when the plugin was just installed, upgraded, restarted, or runtime readiness is unknown. Do not start delegation unless `claude_delegate_doctor` returns `data.ok === true` and the doctor runtime details show matching package, plugin manifest, and installed plugin-root versions for the active release.
 - Choose an explicit `agent_role` from `claude_delegate_roles` for every start request.
 - Use `research` for read-only investigation.
 - Use `patch` for isolated worktree edits.
@@ -39,7 +39,7 @@ Always pass an absolute `cwd` for the target repository or workspace:
 
 ## Data movement
 
-`cdx-claude` does not redact prompts, logs, events, diffs, or results. It moves product data between Codex, local Claude Code, and the local ledger.
+`cdx-claude` is not a general DLP layer. Public job, tail, result, diff, and canary responses redact configured auth secret values and product-owned worker identity, but raw ledger files, worker logs, prompts, Claude provider handling, and non-auth product data remain unredacted.
 The raw cdx-claude worker token is private control material and is not persisted or returned.
 For installed plugin auth, configure `CDX_CLAUDE_AUTH_ENV_FILE` to point at a local Claude auth dotenv file instead of passing auth secrets through the plugin launcher environment.
 `CDX_CLAUDE_NPM_SPEC` is a release-candidate tarball proof override only. Do not set it for production installed-plugin proof after npm publish.

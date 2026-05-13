@@ -147,8 +147,10 @@ export type Receipt = z.infer<typeof ReceiptSchema>;
 
 export interface DoctorReport {
   ok: boolean;
+  runtime: DoctorCheck;
   claude: DoctorCheck;
   node: DoctorCheck;
+  auth_env: DoctorCheck;
   ledger: DoctorCheck;
   roles: DoctorCheck;
   plugin: DoctorCheck;
