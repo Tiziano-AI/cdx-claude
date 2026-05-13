@@ -4,3 +4,5 @@ dist/
 .pnpm-store/
 coverage/
 *.log
+.codex/
+.claude/
