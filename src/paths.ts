@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const PRODUCT_NAME = "cdx-claude";
-export const PLUGIN_VERSION = "0.1.4";
+export const PLUGIN_VERSION = "0.1.5";
 export const PLUGIN_ROOT_ENV = "CDX_CLAUDE_PLUGIN_ROOT";
 
 export interface PluginRootResolution {

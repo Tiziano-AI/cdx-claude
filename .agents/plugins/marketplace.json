@@ -10,7 +10,7 @@
         "source": "git-subdir",
         "url": "https://github.com/Tiziano-AI/cdx-claude.git",
         "path": "./plugin",
-        "ref": "v0.1.4"
+        "ref": "v0.1.5"
       },
       "policy": {
         "installation": "AVAILABLE",

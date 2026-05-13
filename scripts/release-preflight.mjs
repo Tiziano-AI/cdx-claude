@@ -121,15 +121,30 @@ async function collectSourceIdentity() {
 }
 
 async function collectPackageProof() {
-  const dryRun = await run("npm", ["publish", "--dry-run"], { timeoutMs: 120_000 });
-  addRow({
-    name: "npm_publish_dry_run",
-    surface: "candidate_package",
-    required: true,
-    ok: dryRun.exit_code === 0,
-    status: dryRun.exit_code === 0 ? "pass" : "fail",
-    details: commandDetails(dryRun)
-  });
+  const published = await npmVersionPublished();
+  if (published.ok) {
+    addRow({
+      name: "npm_publish_dry_run",
+      surface: "candidate_package",
+      required: true,
+      ok: true,
+      status: "observed",
+      details: {
+        ...commandDetails(published.result),
+        reason: "version is already published; npm dry-run is a pre-publish proof and is skipped after immutable registry publication"
+      }
+    });
+  } else {
+    const dryRun = await run("npm", ["publish", "--dry-run"], { timeoutMs: 120_000 });
+    addRow({
+      name: "npm_publish_dry_run",
+      surface: "candidate_package",
+      required: true,
+      ok: dryRun.exit_code === 0,
+      status: dryRun.exit_code === 0 ? "pass" : "fail",
+      details: commandDetails(dryRun)
+    });
+  }
 
   const pack = await run("pnpm", ["pack", "--pack-destination", packRoot], { timeoutMs: 120_000 });
   const tarball = await findTarball();
@@ -174,6 +189,14 @@ async function collectPackageProof() {
     status: toolsOk ? "pass" : "fail",
     details: commandDetails(tools)
   });
+}
+
+async function npmVersionPublished() {
+  const result = await run("npm", ["view", `cdx-claude@${version}`, "version", "--json"], { timeoutMs: 30_000 });
+  return {
+    ok: result.exit_code === 0 && firstLine(result.stdout).replaceAll("\"", "") === version,
+    result
+  };
 }
 
 async function tarballProof(name, args, timeoutMs, tarball) {

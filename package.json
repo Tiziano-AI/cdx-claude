@@ -1,6 +1,6 @@
 {
   "name": "cdx-claude",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "type": "module",
   "description": "Codex plugin runtime that delegates bounded work to local Claude Code through a persistent non-blocking MCP surface.",
   "license": "MIT",

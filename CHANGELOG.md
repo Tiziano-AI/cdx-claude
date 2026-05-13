@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.5
+
+- Makes `pnpm release:preflight` post-publish aware: once the exact package version exists on npm, the immutable registry identity satisfies the required package-publication row instead of rerunning `npm publish --dry-run` against an already-published version.
+
 ## 0.1.4
 
 - Adds runtime materialization to doctor so source version, npm package version, plugin manifest version, installed cache root, process identity, Node policy, Claude executable policy, auth-env status, and remediation are reported from one canonical context.

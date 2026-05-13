@@ -25,6 +25,6 @@ Job ledgers are shared local operator state. Any enabled Codex session that can 
 
 Plugin-launched API or cloud-provider credentials flow through `CDX_CLAUDE_AUTH_ENV_FILE`. That variable contains a local file path only. The runtime reads allowlisted auth rows from an absolute regular non-symlink file with mode `0600` after npm launches the package; unknown rows are rejected so auth typos fail closed. Credential values are passed to Claude Code/SDK execution and are redacted from cdx-claude public response projections if echoed, but they are not redacted from provider handling or raw local ledger/log artifacts.
 
-## Supported v0.1.4 proof
+## Supported v0.1.5 proof
 
 `patch_autonomous` is supported on macOS after `claude_delegate_sandbox_canary` proves the current local runtime. Linux and Windows are experimental until direct release proof exists.
