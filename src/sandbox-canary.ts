@@ -1,4 +1,5 @@
 import {
+  EventRecord,
   JobRecord,
   SandboxCanaryProof,
   SandboxCanaryProofPaths
@@ -80,26 +81,29 @@ export async function maybeSandboxCanaryProof(job: JobRecord, resultMarkdown: st
     return undefined;
   }
   const events = toPublicEvents(await tailEvents(job.job_id, 500));
-  const text = `${resultMarkdown}\n${JSON.stringify(events)}`;
+  const allPublicText = `${resultMarkdown}\n${JSON.stringify(events)}`;
+  const observedOutputText = sandboxCanaryObservedOutputText(resultMarkdown, events);
   const markers = sandboxCanaryMarkers();
-  const missing = markers.filter((marker) => !text.includes(marker));
+  const missing = markers.filter((marker) => !observedOutputText.includes(marker));
   const paths = sandboxCanaryProofPaths(job);
   const parentWriteAbsent = !(await fileExists(paths.parent_probe_path));
   const tmpWriteAbsent = !(await fileExists(paths.tmp_probe_path));
   const tmpReadNonce = await readTextIfExists(paths.tmp_denied_read_path);
-  const tmpReadNonceAbsent = tmpReadNonce.trim().length > 0 && !text.includes(tmpReadNonce.trim());
+  const tmpReadNonceAbsent = tmpReadNonce.trim().length > 0 && !allPublicText.includes(tmpReadNonce.trim());
   const worktreeWritePresent = await fileExists(paths.worktree_probe_path);
   const deniedReadNonce = await readTextIfExists(paths.denied_read_path);
-  const deniedReadNonceAbsent = deniedReadNonce.trim().length > 0 && !text.includes(deniedReadNonce.trim());
+  const deniedReadNonceAbsent = deniedReadNonce.trim().length > 0 && !allPublicText.includes(deniedReadNonce.trim());
   const additionalReadNonce = await readTextIfExists(paths.additional_read_path);
-  const additionalReadNoncePresent = additionalReadNonce.trim().length > 0 && text.includes(additionalReadNonce.trim());
+  const additionalReadNoncePresent = additionalReadNonce.trim().length > 0 && observedOutputText.includes(additionalReadNonce.trim());
   const additionalWriteAbsent = !(await fileExists(paths.additional_write_path));
   const envCanaryNonce = job.sandbox_canary_env_nonce ?? "";
   const envBoundary = sandboxCanaryEnvironmentBoundary(events);
   const envCanaryParentInjected = envBoundary.parent_injected;
   const envCanaryWorkerAbsent = envBoundary.worker_absent;
-  const envCanaryNonceAbsent = envCanaryNonce.length > 0 && !text.includes(envCanaryNonce) && !text.includes("CANARY_ENV_LEAK");
-  const workerTokenLeaked = workerIdentityLeaked(text);
+  const envCanaryNonceAbsent = envCanaryNonce.length > 0 &&
+    !allPublicText.includes(envCanaryNonce) &&
+    !observedOutputText.includes("CANARY_ENV_LEAK");
+  const workerTokenLeaked = workerIdentityLeaked(allPublicText);
   const proof: SandboxCanaryProof = {
     ok: job.status === "completed" &&
       missing.length === 0 &&
@@ -133,6 +137,51 @@ export async function maybeSandboxCanaryProof(job: JobRecord, resultMarkdown: st
   return proof;
 }
 
+function sandboxCanaryObservedOutputText(resultMarkdown: string, events: EventRecord[]): string {
+  const chunks = [resultMarkdown];
+  for (const event of events) {
+    if (event.type === "result" || event.type === "success") {
+      chunks.push(event.summary);
+    }
+    appendObservedMetadataText(event.metadata, chunks);
+  }
+  return chunks.join("\n");
+}
+
+function appendObservedMetadataText(value: unknown, chunks: string[]): void {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      appendObservedMetadataText(item, chunks);
+    }
+    return;
+  }
+  if (!isPlainRecord(value)) {
+    return;
+  }
+  if (value.type === "tool_result" && typeof value.content === "string") {
+    chunks.push(value.content);
+  }
+  if (value.type === "text" && typeof value.text === "string") {
+    chunks.push(value.text);
+  }
+  if (isPlainRecord(value.tool_use_result)) {
+    const stdout = value.tool_use_result.stdout;
+    const stderr = value.tool_use_result.stderr;
+    if (typeof stdout === "string") {
+      chunks.push(stdout);
+    }
+    if (typeof stderr === "string") {
+      chunks.push(stderr);
+    }
+  }
+  if (typeof value.result === "string") {
+    chunks.push(value.result);
+  }
+  for (const nested of Object.values(value)) {
+    appendObservedMetadataText(nested, chunks);
+  }
+}
+
 function sandboxCanaryEnvironmentBoundary(events: Array<{ type: string; metadata: Record<string, unknown> }>): {
   parent_injected: boolean;
   worker_absent: boolean;
@@ -152,4 +201,8 @@ function workerIdentityLeaked(text: string): boolean {
     text.includes("CDX_CLAUDE_WORKER_TOKEN") ||
     text.includes('"pid"')
   );
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

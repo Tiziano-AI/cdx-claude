@@ -20,12 +20,12 @@ pnpm release:preflight
 
 ## GitHub
 
-Push `main` and tag `v0.1.6` only after preflight passes.
+Push `main` and tag `v0.1.7` only after preflight passes.
 
 ```bash
-git tag v0.1.6
+git tag v0.1.7
 git push origin main
-git push origin v0.1.6
+git push origin v0.1.7
 ```
 
 ## npm
@@ -35,7 +35,7 @@ The npm package name is `cdx-claude`.
 ```bash
 npm publish --access public
 cd /tmp
-npx -y cdx-claude@0.1.6 --help
+npx -y cdx-claude@0.1.7 --help
 ```
 
 Run public npm smoke tests outside this repository so the same-name local package cannot shadow the public package. Pure npm `doctor` is diagnostic, not installed-plugin readiness proof, because the npm package intentionally does not ship Codex plugin metadata.
@@ -45,12 +45,12 @@ Run public npm smoke tests outside this repository so the same-name local packag
 Use one marketplace source identity. This repository uses the Git URL source:
 
 ```bash
-codex plugin marketplace add https://github.com/Tiziano-AI/cdx-claude.git --ref v0.1.6
+codex plugin marketplace add https://github.com/Tiziano-AI/cdx-claude.git --ref v0.1.7
 codex plugin marketplace upgrade cdx-claude
 codex mcp get cdx-claude
 ```
 
-The active MCP row must resolve exactly to `~/.codex/plugins/cache/cdx-claude/cdx-claude/0.1.6/`. A same-version `local-personal/.../cdx-claude/0.1.6/` cache is not public runtime proof. Any older `cdx-claude@local-personal` install is legacy inventory and must stay disabled or be removed through Codex plugin controls before claiming public runtime proof.
+The active MCP row must resolve exactly to `~/.codex/plugins/cache/cdx-claude/cdx-claude/0.1.7/`. A same-version `local-personal/.../cdx-claude/0.1.7/` cache is not public runtime proof. Any older `cdx-claude@local-personal` install is legacy inventory and must stay disabled or be removed through Codex plugin controls before claiming public runtime proof.
 
 Final public-runtime proof has `CDX_CLAUDE_NPM_SPEC` unset and includes:
 
@@ -58,9 +58,9 @@ Final public-runtime proof has `CDX_CLAUDE_NPM_SPEC` unset and includes:
 unset CDX_CLAUDE_NPM_SPEC
 pnpm release:preflight
 codex mcp get cdx-claude
-~/.codex/plugins/cache/cdx-claude/cdx-claude/0.1.6/bin/cdx-claude --help
-~/.codex/plugins/cache/cdx-claude/cdx-claude/0.1.6/bin/cdx-claude doctor
-node scripts/assert-mcp-tools.mjs ~/.codex/plugins/cache/cdx-claude/cdx-claude/0.1.6/bin/cdx-claude ~/.codex/plugins/cache/cdx-claude/cdx-claude/0.1.6
+~/.codex/plugins/cache/cdx-claude/cdx-claude/0.1.7/bin/cdx-claude --help
+~/.codex/plugins/cache/cdx-claude/cdx-claude/0.1.7/bin/cdx-claude doctor
+node scripts/assert-mcp-tools.mjs ~/.codex/plugins/cache/cdx-claude/cdx-claude/0.1.7/bin/cdx-claude ~/.codex/plugins/cache/cdx-claude/cdx-claude/0.1.7
 ```
 
 The direct installed-cache `assert-mcp-tools.mjs` command proves installed tools and schema. Source and tarball `pnpm mcp:tools-proof` additionally run fake-driver behavior checks with private auth env/file variables scrubbed from the proof runtime.

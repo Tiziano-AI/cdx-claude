@@ -57,7 +57,37 @@ test("sandbox canary proof requires markers and side effects", async () => {
       parent_canary_env_injected: true,
       worker_canary_env_absent: true
     });
-    await appendEvent(job.job_id, "result", `${sandboxCanaryMarkers().join(" ")} additional-nonce`, {
+    await appendEvent(job.job_id, "assistant", "assistant", {
+      message: {
+        message: {
+          content: [
+            {
+              type: "tool_use",
+              input: {
+                command: `${sandboxCanaryMarkers().join(" ")} CANARY_ENV_LEAK`
+              }
+            }
+          ]
+        }
+      }
+    });
+    const commandOnlyProof = await maybeSandboxCanaryProof(job, "no worker markers");
+    assert.equal(commandOnlyProof?.markers_present, false);
+    assert.equal(commandOnlyProof?.env_canary_nonce_absent, true);
+
+    await appendEvent(job.job_id, "assistant", "assistant", {
+      message: {
+        message: {
+          content: [
+            {
+              type: "text",
+              text: `${sandboxCanaryMarkers().join(" ")} additional-nonce`
+            }
+          ]
+        }
+      }
+    });
+    await appendEvent(job.job_id, "result", "success", {
       pid: 123,
       worker_pid: 456
     });
@@ -70,6 +100,25 @@ test("sandbox canary proof requires markers and side effects", async () => {
     assert.equal(proof?.env_canary_parent_injected, true);
     assert.equal(proof?.env_canary_worker_absent, true);
     assert.equal(proof?.env_canary_nonce_absent, true);
+
+    await appendEvent(job.job_id, "user", "user", {
+      message: {
+        message: {
+          content: [
+            {
+              type: "tool_result",
+              content: "CANARY_ENV_LEAK"
+            }
+          ]
+        },
+        tool_use_result: {
+          stdout: "CANARY_ENV_LEAK",
+          stderr: ""
+        }
+      }
+    });
+    const observedLeak = await maybeSandboxCanaryProof(job, "all markers present");
+    assert.equal(observedLeak?.env_canary_nonce_absent, false);
 
     await writeFile(parentProbe, "bad\n", "utf8");
     await writeFile(additionalWrite, "bad\n", "utf8");
