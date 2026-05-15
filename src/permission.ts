@@ -22,7 +22,13 @@ export type PermissionGate = (
   options: PermissionOptions
 ) => Promise<PermissionResult>;
 
-export function buildPermissionGate(mode: JobMode, allowedRoot: string): PermissionGate {
+export interface PermissionRootPolicy {
+  executionRoot: string;
+  additionalReadRoots: string[];
+}
+
+export function buildPermissionGate(mode: JobMode, rootPolicy: PermissionRootPolicy): PermissionGate {
+  let canonicalRootPolicy: Promise<{ readRoots: string[]; writeRoots: string[] }> | undefined;
   return async (toolName, input, options): Promise<PermissionResult> => {
     if (toolName === "Bash" && mode !== "patch_autonomous") {
       return {
@@ -42,11 +48,16 @@ export function buildPermissionGate(mode: JobMode, allowedRoot: string): Permiss
 
     const requestedPath = requestedFilePath(input);
     if (requestedPath !== null) {
-      const resolved = resolveInside(allowedRoot, requestedPath);
-      if (!isInside(allowedRoot, resolved) || !(await realPathIsInside(allowedRoot, resolved))) {
+      canonicalRootPolicy = canonicalRootPolicy ?? canonicalizeRootPolicy(rootPolicy);
+      const canonicalPolicy = await canonicalRootPolicy;
+      const allowedRoots = WRITE_TOOLS.has(toolName)
+        ? canonicalPolicy.writeRoots
+        : canonicalPolicy.readRoots;
+      const resolved = resolveInside(rootPolicy.executionRoot, requestedPath);
+      if (!(await pathIsInsideAnyRoot(allowedRoots, resolved))) {
         return {
           behavior: "deny",
-          message: `File access outside ${path.resolve(allowedRoot)} is denied.`,
+          message: accessDeniedMessage(toolName, rootPolicy),
           toolUseID: options.toolUseID
         };
       }
@@ -60,10 +71,23 @@ export function buildPermissionGate(mode: JobMode, allowedRoot: string): Permiss
   };
 }
 
-async function realPathIsInside(root: string, candidate: string): Promise<boolean> {
-  const realRoot = await realpath(root);
+async function canonicalizeRootPolicy(rootPolicy: PermissionRootPolicy): Promise<{ readRoots: string[]; writeRoots: string[] }> {
+  const executionRoot = await realpath(rootPolicy.executionRoot);
+  const additionalReadRoots = rootPolicy.additionalReadRoots.map((root) => path.resolve(root));
+  return {
+    readRoots: [executionRoot, ...additionalReadRoots],
+    writeRoots: [executionRoot]
+  };
+}
+
+async function pathIsInsideAnyRoot(roots: string[], candidate: string): Promise<boolean> {
   const realCandidate = await realExistingPath(candidate);
-  return isInside(realRoot, realCandidate);
+  for (const root of roots) {
+    if (isInside(root, realCandidate)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 async function realExistingPath(candidate: string): Promise<string> {
@@ -92,4 +116,12 @@ function requestedFilePath(input: Record<string, unknown>): string | null {
     }
   }
   return null;
+}
+
+function accessDeniedMessage(toolName: string, rootPolicy: PermissionRootPolicy): string {
+  if (WRITE_TOOLS.has(toolName)) {
+    return `File writes outside ${path.resolve(rootPolicy.executionRoot)} are denied.`;
+  }
+  const readRoots = [rootPolicy.executionRoot, ...rootPolicy.additionalReadRoots].map((root) => path.resolve(root)).join(", ");
+  return `File reads outside configured read roots are denied: ${readRoots}.`;
 }

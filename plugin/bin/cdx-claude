@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 const requestedSpec = process.env.CDX_CLAUDE_NPM_SPEC;
-const runtimeSpec = requestedSpec && requestedSpec.trim().length > 0 ? requestedSpec : "cdx-claude@0.1.5";
+const runtimeSpec = requestedSpec && requestedSpec.trim().length > 0 ? requestedSpec : "cdx-claude@0.1.6";
 const npm = process.platform === "win32" ? "npm.cmd" : "npm";
 const emptyNpmConfig = path.join(tmpdir(), "cdx-claude-empty-npmrc");
 const env = {

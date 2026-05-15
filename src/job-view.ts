@@ -9,6 +9,7 @@ export function toJobView(job: JobRecord): JobView {
     status: job.status,
     cwd: job.cwd,
     execution_cwd: job.execution_cwd,
+    additional_directories: job.additional_directories,
     created_at: job.created_at,
     updated_at: job.updated_at,
     prompt: job.prompt,
@@ -63,11 +64,20 @@ function copyOptionalJobViewFields(job: JobRecord, view: JobView): void {
   if (job.sandbox_canary_tmp_probe_path !== undefined) {
     view.sandbox_canary_tmp_probe_path = job.sandbox_canary_tmp_probe_path;
   }
+  if (job.sandbox_canary_tmp_read_path !== undefined) {
+    view.sandbox_canary_tmp_read_path = job.sandbox_canary_tmp_read_path;
+  }
   if (job.sandbox_canary_worktree_probe_path !== undefined) {
     view.sandbox_canary_worktree_probe_path = job.sandbox_canary_worktree_probe_path;
   }
   if (job.sandbox_canary_denied_read_path !== undefined) {
     view.sandbox_canary_denied_read_path = job.sandbox_canary_denied_read_path;
+  }
+  if (job.sandbox_canary_additional_read_path !== undefined) {
+    view.sandbox_canary_additional_read_path = job.sandbox_canary_additional_read_path;
+  }
+  if (job.sandbox_canary_additional_write_path !== undefined) {
+    view.sandbox_canary_additional_write_path = job.sandbox_canary_additional_write_path;
   }
   if (job.error !== undefined) {
     view.error = job.error;

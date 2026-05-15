@@ -14,6 +14,7 @@ import {
   readJson,
   readString,
   redactPath,
+  withoutPrivateProofAuth,
   withoutNpmSpec
 } from "./release-preflight-helpers.mjs";
 
@@ -174,15 +175,15 @@ async function collectPackageProof() {
   await tarballProof("tarball_doctor", ["doctor"], 60_000, tarball);
   const tools = await run("pnpm", ["mcp:tools-proof"], {
     timeoutMs: 60_000,
-    env: {
+    env: withoutPrivateProofAuth({
       ...process.env,
       CDX_CLAUDE_NPM_SPEC: tarball,
       CDX_CLAUDE_HOME: path.join(packRoot, "mcp-tools-state")
-    }
+    })
   });
   const toolsOk = tools.exit_code === 0 && tools.stdout.includes("\"ok\": true");
   addRow({
-    name: "tarball_mcp_tools_schema",
+    name: "tarball_mcp_tools_schema_and_behavior",
     surface: "candidate_runtime",
     required: true,
     ok: toolsOk,
@@ -203,11 +204,11 @@ async function tarballProof(name, args, timeoutMs, tarball) {
   const result = await run(path.join(repoRoot, "plugin", "bin", "cdx-claude"), args, {
     timeoutMs,
     cwd: path.join(repoRoot, "plugin"),
-    env: {
+    env: withoutPrivateProofAuth({
       ...process.env,
       CDX_CLAUDE_NPM_SPEC: tarball,
       CDX_CLAUDE_HOME: path.join(packRoot, name)
-    }
+    })
   });
   addRow({
     name,
@@ -250,10 +251,10 @@ async function collectRegistryAndInstallState() {
   if (!existsSync(installedRoot)) {
     addInstalledPendingRows(installedRoot);
   } else {
-    const installedEnv = withoutNpmSpec({
+    const installedEnv = withoutPrivateProofAuth(withoutNpmSpec({
       ...process.env,
       CDX_CLAUDE_HOME: path.join(packRoot, "installed-cache-state")
-    });
+    }));
     const installedHelp = await run(path.join(installedRoot, "bin", "cdx-claude"), ["--help"], {
       timeoutMs: 60_000,
       cwd: installedRoot,

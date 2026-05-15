@@ -13,6 +13,7 @@ export interface ClaudeQuery extends AsyncIterable<unknown> {
 export interface ClaudeOptions {
   abortController: AbortController;
   cwd: string;
+  additionalDirectories?: string[];
   tools: string[];
   allowedTools: string[];
   disallowedTools: string[];

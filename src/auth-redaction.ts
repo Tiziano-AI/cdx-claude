@@ -68,7 +68,13 @@ function redactSandboxCanaryProof(proof: SandboxCanaryProof, secrets: string[]):
     denied_read_nonce_absent: proof.denied_read_nonce_absent,
     parent_write_absent: proof.parent_write_absent,
     tmp_write_absent: proof.tmp_write_absent,
+    tmp_read_nonce_absent: proof.tmp_read_nonce_absent,
     worktree_write_present: proof.worktree_write_present,
+    additional_read_nonce_present: proof.additional_read_nonce_present,
+    additional_write_absent: proof.additional_write_absent,
+    env_canary_parent_injected: proof.env_canary_parent_injected,
+    env_canary_worker_absent: proof.env_canary_worker_absent,
+    env_canary_nonce_absent: proof.env_canary_nonce_absent,
     worker_token_leaked: proof.worker_token_leaked,
     paths: redactSandboxCanaryProofPaths(proof.paths, secrets)
   };
@@ -78,8 +84,11 @@ function redactSandboxCanaryProofPaths(paths: SandboxCanaryProofPaths, secrets: 
   return {
     parent_probe_path: redactText(paths.parent_probe_path, secrets),
     tmp_probe_path: redactText(paths.tmp_probe_path, secrets),
+    tmp_denied_read_path: redactText(paths.tmp_denied_read_path, secrets),
     worktree_probe_path: redactText(paths.worktree_probe_path, secrets),
-    denied_read_path: redactText(paths.denied_read_path, secrets)
+    denied_read_path: redactText(paths.denied_read_path, secrets),
+    additional_read_path: redactText(paths.additional_read_path, secrets),
+    additional_write_path: redactText(paths.additional_write_path, secrets)
   };
 }
 

@@ -6,6 +6,7 @@ import { authEnvFileVariable } from "./auth-env.js";
 import { CLAUDE_CODE_EXECUTABLE_ENV } from "./claude-executable.js";
 import { packageRoot, PLUGIN_ROOT_ENV, stateRoot, stderrPath, stdoutPath } from "./paths.js";
 import { materializeRuntime } from "./runtime-materialization.js";
+import { SANDBOX_CANARY_ENV_EXPECTED_KEY } from "./sandbox-canary.js";
 
 /** Starts the hidden detached worker through the materialized active cdx-claude CLI path. */
 export async function spawnWorker(jobId: string, workerToken: string): Promise<number> {
@@ -50,6 +51,7 @@ function workerEnvironment(workerToken: string, pluginRoot: string): NodeJS.Proc
   copyOptionalEnvironment(environment, "CDX_CLAUDE_DRIVER");
   copyOptionalEnvironment(environment, "CDX_CLAUDE_FAKE_DELAY_MS");
   copyOptionalEnvironment(environment, "CDX_CLAUDE_FAKE_ECHO_ENV_KEY");
+  copyOptionalEnvironment(environment, SANDBOX_CANARY_ENV_EXPECTED_KEY);
   copyOptionalEnvironment(environment, CLAUDE_CODE_EXECUTABLE_ENV);
   copyOptionalEnvironment(environment, authEnvFileVariable());
   return environment;

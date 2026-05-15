@@ -132,8 +132,10 @@ function parseJobId(argv: string[]): { job_id: string } {
   return JobIdRequestSchema.parse({ job_id: argv[0] });
 }
 
-function readFlags(argv: string[]): Record<string, string | number | boolean> {
-  const values: Record<string, string | number | boolean> = {};
+type FlagValue = string | number | boolean | string[];
+
+function readFlags(argv: string[]): Record<string, FlagValue> {
+  const values: Record<string, FlagValue> = {};
   for (let index = 0; index < argv.length; index += 1) {
     const raw = argv[index];
     if (raw === undefined) {
@@ -147,6 +149,18 @@ function readFlags(argv: string[]): Record<string, string | number | boolean> {
     }
     const key = raw.slice(2).replaceAll("-", "_");
     const next = argv[index + 1];
+    if (key === "additional_directory") {
+      if (next === undefined || next.startsWith("--")) {
+        throw new UserVisibleError("--additional-directory requires an absolute path value.", {
+          code: "invalid_input",
+          field: "additional_directories",
+          recoverable: true
+        });
+      }
+      appendAdditionalDirectory(values, next);
+      index += 1;
+      continue;
+    }
     if (next === undefined || next.startsWith("--")) {
       values[key] = true;
       continue;
@@ -155,6 +169,15 @@ function readFlags(argv: string[]): Record<string, string | number | boolean> {
     index += 1;
   }
   return values;
+}
+
+function appendAdditionalDirectory(values: Record<string, FlagValue>, directory: string): void {
+  const current = values.additional_directories;
+  if (Array.isArray(current)) {
+    current.push(directory);
+    return;
+  }
+  values.additional_directories = [directory];
 }
 
 function parseFlagValue(value: string): string | number | boolean {
@@ -194,7 +217,7 @@ function writeHelp(): void {
       "  cdx-claude mcp serve",
       "  cdx-claude doctor",
       "  cdx-claude roles",
-      "  cdx-claude jobs start --cwd /repo --prompt 'task' --mode research --agent-role evidence_cartographer",
+      "  cdx-claude jobs start --cwd /repo --additional-directory /context --prompt 'task' --mode research --agent-role evidence_cartographer",
       `    Omit --max-budget-usd unless the user explicitly requested a non-default SDK usage-estimate guard; default ${DEFAULT_SDK_USAGE_GUARD_USD}.`,
       "  cdx-claude jobs list [--status running] [--limit 50]",
       "  cdx-claude jobs status <job_id>",

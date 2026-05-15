@@ -7,6 +7,7 @@ import type { JobRecord } from "../src/contracts.js";
 import {
   DEFAULT_SDK_USAGE_GUARD_USD,
   JobIdRequestSchema,
+  MAX_ADDITIONAL_DIRECTORIES,
   SandboxCanaryRequestSchema,
   StartRequestSchema
 } from "../src/contracts.js";
@@ -29,6 +30,78 @@ test("start requests require an explicit agent role", () => {
     mode: "research"
   });
   assert.equal(parsed.success, false);
+});
+
+test("start requests accept bounded snake_case additional directories", () => {
+  const parsed = StartRequestSchema.parse({
+    cwd: "/tmp/repo",
+    additional_directories: ["/tmp/context"],
+    prompt: "research this",
+    mode: "research",
+    agent_role: "evidence_cartographer"
+  });
+  assert.deepEqual(parsed.additional_directories, ["/tmp/context"]);
+  assert.deepEqual(
+    StartRequestSchema.parse({
+      cwd: "/tmp/repo",
+      prompt: "research this",
+      mode: "research",
+      agent_role: "evidence_cartographer"
+    }).additional_directories,
+    []
+  );
+});
+
+test("start requests reject invalid additional directory shape", () => {
+  assert.equal(
+    StartRequestSchema.safeParse({
+      cwd: "/tmp/re\npo",
+      prompt: "research this",
+      mode: "research",
+      agent_role: "evidence_cartographer"
+    }).success,
+    false
+  );
+  assert.equal(
+    StartRequestSchema.safeParse({
+      cwd: "/tmp/repo",
+      additional_directories: ["relative"],
+      prompt: "research this",
+      mode: "research",
+      agent_role: "evidence_cartographer"
+    }).success,
+    false
+  );
+  assert.equal(
+    StartRequestSchema.safeParse({
+      cwd: "/tmp/repo",
+      additional_directories: ["/tmp/con\ntext"],
+      prompt: "research this",
+      mode: "research",
+      agent_role: "evidence_cartographer"
+    }).success,
+    false
+  );
+  assert.equal(
+    StartRequestSchema.safeParse({
+      cwd: "/tmp/repo",
+      additionalDirectories: ["/tmp/context"],
+      prompt: "research this",
+      mode: "research",
+      agent_role: "evidence_cartographer"
+    }).success,
+    false
+  );
+  assert.equal(
+    StartRequestSchema.safeParse({
+      cwd: "/tmp/repo",
+      additional_directories: Array.from({ length: MAX_ADDITIONAL_DIRECTORIES + 1 }, (_unused, index) => `/tmp/context-${index}`),
+      prompt: "research this",
+      mode: "research",
+      agent_role: "evidence_cartographer"
+    }).success,
+    false
+  );
 });
 
 test("job id requests reject path traversal", () => {
@@ -80,6 +153,8 @@ test("ledger appends monotonic event sequence numbers under concurrent writers",
       status: "running",
       cwd: sandbox,
       execution_cwd: sandbox,
+      additional_directories: [],
+      additional_directory_fingerprints: [],
       created_at: now,
       updated_at: now,
       prompt: "record events",

@@ -33,8 +33,8 @@ test("patch jobs run in a detached worktree and expose diffs", async () => {
     assert.equal("worker_token" in stored, false);
     assert.match(stored.worker_token_hash ?? "", /^[0-9a-f]{64}$/);
     assert.equal(stored.max_budget_usd, 25);
-    assert.match(stored.agent_prompt ?? "", new RegExp(`Execution root: ${escapeRegExp(job.worktree_path)}`));
-    assert.doesNotMatch(stored.agent_prompt ?? "", new RegExp(`Execution root: ${escapeRegExp(repo)}`));
+    assert.match(stored.agent_prompt ?? "", new RegExp(`Execution root: ${escapeRegExp(JSON.stringify(job.worktree_path))}`));
+    assert.doesNotMatch(stored.agent_prompt ?? "", new RegExp(`Execution root: ${escapeRegExp(JSON.stringify(repo))}`));
     const completed = await waitForCompletion(job.job_id);
     assert.equal(completed.status, "completed");
     assert.notEqual(completed.worktree_path, repo);
@@ -309,6 +309,8 @@ test("worker token mismatch does not terminally mutate a job", async () => {
       status: "starting",
       cwd: sandbox,
       execution_cwd: sandbox,
+      additional_directories: [],
+      additional_directory_fingerprints: [],
       created_at: "2026-05-10T12:00:00.000Z",
       updated_at: "2026-05-10T12:00:00.000Z",
       prompt: "do work",
@@ -343,6 +345,8 @@ test("public event tails omit cdx-claude worker identity metadata", async () => 
       status: "completed",
       cwd: sandbox,
       execution_cwd: sandbox,
+      additional_directories: [],
+      additional_directory_fingerprints: [],
       created_at: "2026-05-10T12:00:00.000Z",
       updated_at: "2026-05-10T12:00:00.000Z",
       prompt: "inspect events",

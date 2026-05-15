@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import type { JobRecord } from "../src/contracts.js";
@@ -18,7 +18,7 @@ test("allow_web is the only path that exposes Claude web tools", () => {
 });
 
 test("patch_autonomous configures Bash only with fail-closed native sandboxing", () => {
-  const options = buildClaudeOptionsForJob(jobRecord({ mode: "patch_autonomous" }), new AbortController());
+  const options = buildClaudeOptionsForJob(jobRecord({ mode: "patch_autonomous", execution_cwd: "/tmp/worktree" }), new AbortController());
   assert.equal(options.tools.includes("Bash"), true);
   assert.equal(options.disallowedTools.includes("Bash"), false);
   assert.equal(options.allowedTools.length, 0);
@@ -30,9 +30,63 @@ test("patch_autonomous configures Bash only with fail-closed native sandboxing",
   assert.ok(options.sandbox?.filesystem?.denyWrite?.includes("/tmp/repo"));
 });
 
+test("sdk options forward normalized additional directories", () => {
+  const options = buildClaudeOptionsForJob(jobRecord({ additional_directories: ["/tmp/context"] }), new AbortController());
+  assert.deepEqual(options.additionalDirectories, ["/tmp/context"]);
+  const withoutAdditional = buildClaudeOptionsForJob(jobRecord({}), new AbortController());
+  assert.equal(withoutAdditional.additionalDirectories, undefined);
+});
+
+test("patch_autonomous sandbox allows additional reads but denies additional writes", () => {
+  const options = buildClaudeOptionsForJob(
+    jobRecord({
+      mode: "patch_autonomous",
+      execution_cwd: "/tmp/worktree",
+      additional_directories: ["/tmp/context"]
+    }),
+    new AbortController()
+  );
+  assert.ok(options.sandbox?.filesystem.allowRead.includes("/tmp/context"));
+  assert.equal(options.sandbox?.filesystem.allowWrite.includes("/tmp/context"), false);
+  assert.ok(options.sandbox?.filesystem.denyWrite.includes("/tmp/context"));
+});
+
+test("patch_autonomous sandbox pins allowRead precedence for home child extras", () => {
+  const homeExtra = path.join(homedir(), "cdx-claude-context");
+  const options = buildClaudeOptionsForJob(
+    jobRecord({
+      mode: "patch_autonomous",
+      execution_cwd: "/tmp/worktree",
+      additional_directories: [homeExtra]
+    }),
+    new AbortController()
+  );
+  assert.ok(options.sandbox?.filesystem.allowRead.includes(homeExtra));
+  assert.ok(options.sandbox?.filesystem.denyRead?.includes(homedir()));
+});
+
+test("patch_autonomous sandbox explicitly denyReads tmp outside the job temp root", () => {
+  const options = buildClaudeOptionsForJob(jobRecord({ mode: "patch_autonomous", execution_cwd: "/tmp/worktree" }), new AbortController());
+  assert.ok(options.sandbox?.filesystem.denyRead?.includes(tmpdir()));
+});
+
+test("patch_autonomous does not denyRead an admitted disjoint additional root", () => {
+  const options = buildClaudeOptionsForJob(
+    jobRecord({
+      mode: "patch_autonomous",
+      execution_cwd: "/tmp/worktree",
+      additional_directories: ["/tmp/context"]
+    }),
+    new AbortController()
+  );
+  assert.equal(options.sandbox?.filesystem.denyRead.includes("/tmp/context"), false);
+  assert.ok(options.sandbox?.filesystem.denyWrite.includes("/tmp/context"));
+});
+
 test("patch mode removes Bash while keeping file edit tools", () => {
   const options = buildClaudeOptionsForJob(jobRecord({ mode: "patch" }), new AbortController());
   assert.equal(options.tools.includes("Edit"), true);
+  assert.equal(options.tools.includes("NotebookEdit"), true);
   assert.equal(options.tools.includes("Bash"), false);
   assert.equal(options.disallowedTools.includes("Bash"), true);
 });
@@ -126,6 +180,8 @@ function jobRecord(overrides: Partial<JobRecord>): JobRecord {
     status: "running",
     cwd: "/tmp/repo",
     execution_cwd: "/tmp/repo",
+    additional_directories: [],
+    additional_directory_fingerprints: [],
     created_at: "2026-05-10T12:00:00.000Z",
     updated_at: "2026-05-10T12:00:00.000Z",
     prompt: "do work",

@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import { RoleReport, RoleSummary, StartRequest } from "./contracts.js";
+import { NormalizedStartRequest, RoleReport, RoleSummary } from "./contracts.js";
 import { UserVisibleError } from "./errors.js";
 import { rolesManifestPath, rolesRoot } from "./paths.js";
 
@@ -42,7 +42,11 @@ export async function roleReport(): Promise<RoleReport> {
 }
 
 /** Loads and validates the caller-selected packaged role TOML for a Claude delegate job. */
-export async function resolveAgentRole(request: StartRequest, executionCwd: string): Promise<ResolvedAgentRole> {
+export async function resolveAgentRole(
+  request: NormalizedStartRequest,
+  executionCwd: string,
+  additionalDirectories: string[]
+): Promise<ResolvedAgentRole> {
   const catalogue = await readPackagedRoleCatalogue();
   const role = catalogue.roles.find((candidate) => candidate.name === request.agent_role);
   if (role === undefined) {
@@ -57,7 +61,7 @@ export async function resolveAgentRole(request: StartRequest, executionCwd: stri
   return {
     role,
     role_toml: roleToml,
-    prompt: buildAgentPrompt(role, roleToml, request, executionCwd)
+    prompt: buildAgentPrompt(role, roleToml, request, executionCwd, additionalDirectories)
   };
 }
 
@@ -111,9 +115,16 @@ function roleSummary(role: PackagedRole): RoleSummary {
 function buildAgentPrompt(
   role: PackagedRole,
   roleToml: string,
-  request: StartRequest,
-  executionCwd: string
+  request: NormalizedStartRequest,
+  executionCwd: string,
+  additionalDirectories: string[]
 ): string {
+  const additionalRootLines = additionalDirectories.length === 0
+    ? ["- Additional read-only roots: none"]
+    : [
+        "- Additional read-only roots:",
+        ...additionalDirectories.map((directory) => `  - ${displayPath(directory)}`)
+      ];
   return [
     "You are Claude Code running as a cdx-claude servant delegate for Codex.",
     "",
@@ -122,7 +133,8 @@ function buildAgentPrompt(
     "- Do not edit the parent workspace. Patch modes operate only in the provided execution worktree.",
     "- Do not stage, commit, push, publish, install, or mutate runtime plugin/cache surfaces unless the task explicitly asks for worktree file edits that demonstrate a patch.",
     "- Do not spawn, invoke, or delegate to other agents. You are the selected role for this job.",
-    "- Stay within the execution root and the tools made available by cdx-claude.",
+    "- Stay within the execution root, declared read-only roots, and the tools made available by cdx-claude.",
+    "- Treat additional roots as read-only context. Do not write, edit, create, delete, move, or stage files there.",
     "- cdx-claude does not redact prompts, logs, events, diffs, or results; treat outputs as product data moving between Codex and Claude.",
     "",
     "Job context:",
@@ -130,7 +142,8 @@ function buildAgentPrompt(
     `- Role path: roles/${role.path}`,
     `- Mode: ${request.mode}`,
     `- Title: ${request.title ?? request.prompt.slice(0, 80)}`,
-    `- Execution root: ${executionCwd}`,
+    `- Execution root: ${displayPath(executionCwd)}`,
+    ...additionalRootLines,
     `- Web tools enabled: ${request.allow_web}`,
     "",
     "Selected packaged delegate role TOML follows verbatim:",
@@ -144,4 +157,8 @@ function buildAgentPrompt(
     "- For patch jobs, make only task-scoped worktree edits and summarize the diff.",
     "- Final output must tell Codex what was proven, what changed if anything, and what remains blocked."
   ].join("\n");
+}
+
+function displayPath(value: string): string {
+  return JSON.stringify(value);
 }

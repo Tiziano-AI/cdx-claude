@@ -119,6 +119,8 @@ test("plugin skill tells Codex to leave the usage guard on the default path", as
     interface?: { defaultPrompt?: string[] };
   };
   assert.match(skill, /Do not set or tune `max_budget_usd` proactively/);
+  assert.match(skill, /additional_directories/);
+  assert.match(skill, /read-only roots/);
   assert.match(skill, /Omit it unless the user explicitly requests/);
   assert.match(skill, /built-in default is `25`/);
   assert.match(skill, /`claude_delegate_doctor` returns `data\.ok === true`/);

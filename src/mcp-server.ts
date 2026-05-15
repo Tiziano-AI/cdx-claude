@@ -14,6 +14,7 @@ import {
   EmptyRequestSchema,
   JobIdRequestSchema,
   ListRequestSchema,
+  MAX_ADDITIONAL_DIRECTORIES,
   MAX_SDK_USAGE_GUARD_USD,
   SandboxCanaryRequestSchema,
   StartRequestSchema,
@@ -107,7 +108,13 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
       type: "object",
       required: ["cwd", "prompt", "mode", "agent_role"],
       properties: {
-        cwd: { type: "string", description: "Absolute target repository or workspace path." },
+        cwd: { type: "string", description: "Absolute git repository or worktree root." },
+        additional_directories: {
+          type: "array",
+          maxItems: MAX_ADDITIONAL_DIRECTORIES,
+          items: { type: "string", pattern: "^/" },
+          description: "Optional up to 8 absolute read-only context directories. Omit unless the user authorized Claude to read disjoint roots. Each entry must be an absolute path."
+        },
         prompt: { type: "string", description: "Concrete delegated task for Claude Code." },
         mode: { enum: ["research", "patch", "patch_autonomous"] },
         agent_role: { type: "string", pattern: "^[a-z][a-z0-9_]*$", description: "Packaged delegate role from claude_delegate_roles." },

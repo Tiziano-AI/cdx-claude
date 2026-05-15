@@ -1,14 +1,96 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { runRequired } from "../src/process-runner.js";
 
 test("cli help documents the public mcp serve command", async () => {
   const result = await runCli(["--help"]);
   assert.equal(result.exit_code, 0);
   assert.match(result.stdout, /cdx-claude mcp serve/);
+  assert.match(result.stdout, /--additional-directory/);
   assert.match(result.stdout, /default 25/);
   assert.doesNotMatch(result.stdout, /__worker/);
+});
+
+test("cli jobs start maps repeatable additional directory flags", async () => {
+  const sandbox = await mkdtemp(path.join(tmpdir(), "cdx-claude-cli-extra-test-"));
+  const state = path.join(sandbox, "state");
+  const repo = path.join(sandbox, "repo");
+  const extra = path.join(sandbox, "context");
+  try {
+    await bootstrapRepo(repo);
+    await mkdir(extra);
+    await writeFile(path.join(extra, "notes.txt"), "context\n", "utf8");
+    const realExtra = await realpath(extra);
+    const result = await runCli([
+      "jobs",
+      "start",
+      "--cwd",
+      repo,
+      "--additional-directory",
+      extra,
+      "--prompt",
+      "inspect",
+      "--mode",
+      "research",
+      "--agent-role",
+      "workflow_ledger"
+    ], {
+      CDX_CLAUDE_HOME: state,
+      CDX_CLAUDE_DRIVER: "fake"
+    });
+    assert.equal(result.exit_code, 0);
+    const parsed = JSON.parse(result.stdout) as {
+      ok: boolean;
+      data: { additional_directories: string[] };
+    };
+    assert.equal(parsed.ok, true);
+    assert.deepEqual(parsed.data.additional_directories, [realExtra]);
+  } finally {
+    await rm(sandbox, { recursive: true, force: true });
+  }
+});
+
+test("cli jobs start rejects camelCase additional directory aliases before ledger creation", async () => {
+  const sandbox = await mkdtemp(path.join(tmpdir(), "cdx-claude-cli-camelcase-test-"));
+  const state = path.join(sandbox, "state");
+  const repo = path.join(sandbox, "repo");
+  const extra = path.join(sandbox, "context");
+  try {
+    await bootstrapRepo(repo);
+    await mkdir(extra);
+    const result = await runCli([
+      "jobs",
+      "start",
+      "--cwd",
+      repo,
+      "--additionalDirectories",
+      extra,
+      "--prompt",
+      "inspect",
+      "--mode",
+      "research",
+      "--agent-role",
+      "workflow_ledger"
+    ], {
+      CDX_CLAUDE_HOME: state,
+      CDX_CLAUDE_DRIVER: "fake"
+    });
+    assert.equal(result.exit_code, 1);
+    const parsed = JSON.parse(result.stdout) as {
+      ok: boolean;
+      error: { code: string };
+    };
+    assert.equal(parsed.ok, false);
+    assert.equal(parsed.error.code, "invalid_input");
+    assert.equal(existsSync(path.join(state, "jobs")), false);
+  } finally {
+    await rm(sandbox, { recursive: true, force: true });
+  }
 });
 
 test("cli roles returns the stable JSON envelope", async () => {
@@ -117,4 +199,13 @@ function runCli(args: string[], extraEnv: Record<string, string> = {}): Promise<
       resolve({ exit_code: exitCode ?? 1, stdout, stderr });
     });
   });
+}
+
+async function bootstrapRepo(repo: string): Promise<void> {
+  await runRequired("git", ["init", "-b", "main", repo], tmpdir());
+  await runRequired("git", ["config", "user.name", "CDX Claude Test"], repo);
+  await runRequired("git", ["config", "user.email", "cdx-claude@example.invalid"], repo);
+  await writeFile(path.join(repo, "README.md"), "# fixture\n", "utf8");
+  await runRequired("git", ["add", "README.md"], repo);
+  await runRequired("git", ["commit", "-m", "initial"], repo);
 }

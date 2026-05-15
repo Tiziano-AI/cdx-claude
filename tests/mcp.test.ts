@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -30,7 +30,16 @@ test("mcp tools list exposes only the wrapper delegation tools", async () => {
     assert.deepEqual(names, EXPECTED_TOOL_NAMES);
     const startTool = tools.tools.find((tool) => tool.name === "claude_delegate_start");
     assert.deepEqual(startTool?.inputSchema.required, ["cwd", "prompt", "mode", "agent_role"]);
-    const startProperties = startTool?.inputSchema.properties as Record<string, { default?: unknown; description?: string }> | undefined;
+    const startProperties = startTool?.inputSchema.properties as Record<string, { default?: unknown; description?: string; items?: { pattern?: string }; maxItems?: number }> | undefined;
+    assert.equal(startTool?.inputSchema.additionalProperties, false);
+    assert.match(startProperties?.cwd?.description ?? "", /git repository or worktree root/);
+    assert.equal(startProperties?.additional_directories?.default, undefined);
+    assert.equal(startProperties?.additional_directories?.maxItems, 8);
+    assert.equal(startProperties?.additional_directories?.items?.pattern, "^/");
+    assert.match(startProperties?.additional_directories?.description ?? "", /read-only/);
+    assert.match(startProperties?.additional_directories?.description ?? "", /authorized/);
+    assert.match(startProperties?.additional_directories?.description ?? "", /absolute path/);
+    assert.equal(startProperties?.additionalDirectories, undefined);
     assert.equal(startProperties?.max_budget_usd?.default, undefined);
     assert.match(startProperties?.max_budget_usd?.description ?? "", /Do not set this field unless the user explicitly requested/);
     const canaryTool = tools.tools.find((tool) => tool.name === "claude_delegate_sandbox_canary");
@@ -94,6 +103,8 @@ test("mcp invalid inputs return product failure envelopes", async () => {
     for (const call of [
       { name: "claude_delegate_start", arguments: { cwd: ".", prompt: "x", mode: "research" } },
       { name: "claude_delegate_start", arguments: { cwd: ".", prompt: "x", mode: "research", agent_role: "workflow_ledger" } },
+      { name: "claude_delegate_start", arguments: { cwd: "/tmp", additionalDirectories: ["/tmp/context"], prompt: "x", mode: "research", agent_role: "workflow_ledger" } },
+      { name: "claude_delegate_start", arguments: { cwd: "/tmp", additional_directories: ["relative"], prompt: "x", mode: "research", agent_role: "workflow_ledger" } },
       { name: "claude_delegate_start", arguments: { cwd: "/tmp", prompt: "x", mode: "research", agent_role: "workflow_ledger", max_budget_usd: 0 } },
       { name: "claude_delegate_start", arguments: { cwd: "/tmp", prompt: "x", mode: "research", agent_role: "workflow_ledger", max_budget_usd: 101 } },
       { name: "claude_delegate_status", arguments: { job_id: "../../outside" } },
@@ -119,7 +130,11 @@ test("mcp start/status/result/cleanup works through the public wrapper", async (
   const sandbox = await mkdtemp(path.join(tmpdir(), "cdx-claude-mcp-positive-test-"));
   const repo = path.join(sandbox, "repo");
   const state = path.join(sandbox, "state");
+  const extra = path.join(sandbox, "context");
   await bootstrapRepo(repo);
+  await mkdir(extra);
+  await writeFile(path.join(extra, "notes.txt"), "context\n", "utf8");
+  const realExtra = await realpath(extra);
   const transport = new StdioClientTransport({
     command: process.execPath,
     args: ["dist/src/cli.js", "mcp", "serve"],
@@ -139,22 +154,34 @@ test("mcp start/status/result/cleanup works through the public wrapper", async (
       name: "claude_delegate_start",
       arguments: {
         cwd: repo,
+        additional_directories: [extra],
         prompt: "make a fake patch",
         mode: "patch",
         agent_role: "repo_alignment_reviewer"
       }
     });
-    const startEnvelope = started.structuredContent as { ok: boolean; data?: { job_id: string; worktree_path?: string } };
+    const startEnvelope = started.structuredContent as { ok: boolean; data?: { job_id: string; worktree_path?: string; additional_directories?: string[] } };
     assert.equal(startEnvelope.ok, true);
     assert.equal(typeof startEnvelope.data?.job_id, "string");
+    assert.deepEqual(startEnvelope.data?.additional_directories, [realExtra]);
     assert.equal(JSON.stringify(startEnvelope).includes("worker_token"), false);
     assert.equal(JSON.stringify(startEnvelope).includes("worker_pid"), false);
     const jobId = startEnvelope.data?.job_id ?? "";
     await waitForMcpCompletion(client, jobId);
+    const status = await client.callTool({ name: "claude_delegate_status", arguments: { job_id: jobId } });
+    const statusEnvelope = status.structuredContent as { ok: boolean; data?: { additional_directories?: string[] } };
+    assert.deepEqual(statusEnvelope.data?.additional_directories, [realExtra]);
+    const listed = await client.callTool({ name: "claude_delegate_list", arguments: { limit: 10 } });
+    const listEnvelope = listed.structuredContent as { ok: boolean; data?: Array<{ job_id: string; additional_directories?: string[] }> };
+    assert.equal(listEnvelope.data?.some((job) => job.job_id === jobId && JSON.stringify(job.additional_directories) === JSON.stringify([realExtra])), true);
     const result = await client.callTool({ name: "claude_delegate_result", arguments: { job_id: jobId } });
-    const resultEnvelope = result.structuredContent as { ok: boolean; data?: { result_markdown: string } };
+    const resultEnvelope = result.structuredContent as { ok: boolean; data?: { job: { additional_directories?: string[] }; result_markdown: string } };
     assert.equal(resultEnvelope.ok, true);
+    assert.deepEqual(resultEnvelope.data?.job.additional_directories, [realExtra]);
     assert.match(resultEnvelope.data?.result_markdown ?? "", /Fake driver completed/);
+    const diff = await client.callTool({ name: "claude_delegate_diff", arguments: { job_id: jobId } });
+    const diffEnvelope = diff.structuredContent as { ok: boolean; data?: { job: { additional_directories?: string[] } } };
+    assert.deepEqual(diffEnvelope.data?.job.additional_directories, [realExtra]);
     const tail = await client.callTool({ name: "claude_delegate_tail", arguments: { job_id: jobId, limit: 100 } });
     assert.equal(JSON.stringify(tail.structuredContent).includes("worker_pid"), false);
     assert.equal(JSON.stringify(tail.structuredContent).includes("\"pid\""), false);

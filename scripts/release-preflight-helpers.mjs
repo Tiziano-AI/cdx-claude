@@ -91,6 +91,18 @@ export function withoutNpmSpec(environment) {
   return copy;
 }
 
+/** Returns a proof environment that cannot load private Claude auth dotenv material. */
+export function withoutPrivateProofAuth(environment) {
+  const copy = { ...environment };
+  delete copy.CDX_CLAUDE_AUTH_ENV_FILE;
+  for (const key of Object.keys(copy)) {
+    if (isAuthEnvironmentKey(key)) {
+      delete copy[key];
+    }
+  }
+  return copy;
+}
+
 /** Extracts and normalizes the cwd row from `codex mcp get` output. */
 export function parseCodexMcpCwd(stdout) {
   for (const line of stdout.split(/\r?\n/u)) {
@@ -144,4 +156,17 @@ function scrubText(value) {
     }
   }
   return redactPath(scrubbed);
+}
+
+function isAuthEnvironmentKey(key) {
+  return key.startsWith("ANTHROPIC_") ||
+    key.startsWith("CLAUDE_CODE_") ||
+    key.startsWith("AWS_") ||
+    key.startsWith("AZURE_") ||
+    key === "GOOGLE_APPLICATION_CREDENTIALS" ||
+    key === "HTTPS_PROXY" ||
+    key === "HTTP_PROXY" ||
+    key === "NO_PROXY" ||
+    key === "NODE_EXTRA_CA_CERTS" ||
+    key === "SSL_CERT_FILE";
 }

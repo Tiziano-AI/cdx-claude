@@ -1,14 +1,16 @@
 import { appendFile, mkdir } from "node:fs/promises";
-import { homedir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { z } from "zod";
 import { authEnvironmentFromProcess } from "./auth-env.js";
+import { assertAdditionalDirectoriesStable } from "./cwd-policy.js";
 import { resolveClaudeCodeExecutablePath } from "./claude-executable.js";
 import { JobRecord } from "./contracts.js";
 import { ClaudeOptions, ClaudeSandboxSettings, loadClaudeSdk } from "./claude-sdk.js";
 import { appendEvent, updateJob, writeResultMarkdown } from "./ledger.js";
 import { buildPermissionGate } from "./permission.js";
-import { jobsRoot, PLUGIN_VERSION, tempPath } from "./paths.js";
+import { isInside, jobsRoot, PLUGIN_VERSION, tempPath } from "./paths.js";
+import { SANDBOX_CANARY_ENV_EXPECTED_KEY, SANDBOX_CANARY_ENV_KEY } from "./sandbox-canary.js";
 
 const MessageSummarySchema = z
   .object({
@@ -22,11 +24,23 @@ const MessageSummarySchema = z
   .passthrough();
 
 export async function runClaudeJob(job: JobRecord, stopSignal?: AbortSignal): Promise<void> {
+  await appendSandboxCanaryEnvironmentBoundary(job.job_id);
+  await assertAdditionalDirectoriesStable(job.additional_directories, job.additional_directory_fingerprints);
   if (process.env.CDX_CLAUDE_DRIVER === "fake") {
     await runFakeJob(job, stopSignal);
     return;
   }
   await runSdkJob(job, stopSignal);
+}
+
+async function appendSandboxCanaryEnvironmentBoundary(jobId: string): Promise<void> {
+  if (process.env[SANDBOX_CANARY_ENV_EXPECTED_KEY] !== "1") {
+    return;
+  }
+  await appendEvent(jobId, "sandbox_canary_env_boundary", "Sandbox canary environment boundary checked", {
+    parent_canary_env_injected: true,
+    worker_canary_env_absent: process.env[SANDBOX_CANARY_ENV_KEY] === undefined
+  });
 }
 
 /** Raised when the Claude SDK returns a terminal error result instead of a success result. */
@@ -148,6 +162,7 @@ export function buildClaudeOptionsForJob(job: JobRecord, abortController: AbortC
   const base: ClaudeOptions = {
     abortController,
     cwd: job.execution_cwd,
+    ...(job.additional_directories.length === 0 ? {} : { additionalDirectories: job.additional_directories }),
     tools,
     allowedTools: [],
     disallowedTools: job.mode === "patch_autonomous" ? [] : ["Bash"],
@@ -158,7 +173,10 @@ export function buildClaudeOptionsForJob(job: JobRecord, abortController: AbortC
     strictMcpConfig: true,
     permissionMode: "default",
     ...(claudeExecutable === undefined ? {} : { pathToClaudeCodeExecutable: claudeExecutable }),
-    canUseTool: buildPermissionGate(job.mode, job.execution_cwd),
+    canUseTool: buildPermissionGate(job.mode, {
+      executionRoot: job.execution_cwd,
+      additionalReadRoots: job.additional_directories
+    }),
     env: claudeEnvironment(job.job_id),
     ...(job.agent_prompt === undefined
       ? {}
@@ -196,8 +214,8 @@ function toolsForMode(mode: JobRecord["mode"]): string[] {
   const fileTools = mode === "research"
     ? ["Read", "Grep", "Glob", "LS"]
     : mode === "patch_autonomous"
-      ? ["Read", "Grep", "Glob", "LS", "Edit", "Write", "MultiEdit", "Bash"]
-      : ["Read", "Grep", "Glob", "LS", "Edit", "Write", "MultiEdit"];
+      ? ["Read", "Grep", "Glob", "LS", "Edit", "Write", "MultiEdit", "NotebookEdit", "Bash"]
+      : ["Read", "Grep", "Glob", "LS", "Edit", "Write", "MultiEdit", "NotebookEdit"];
   return fileTools;
 }
 
@@ -228,6 +246,8 @@ function claudeEnvironment(jobId: string): Record<string, string | undefined> {
 
 function sandboxForJob(job: JobRecord): ClaudeSandboxSettings {
   const home = homedir();
+  const tempRoot = tempPath(job.job_id);
+  const allowRead = [job.execution_cwd, tempRoot, ...job.additional_directories];
   return {
     enabled: true,
     failIfUnavailable: true,
@@ -235,19 +255,21 @@ function sandboxForJob(job: JobRecord): ClaudeSandboxSettings {
     allowUnsandboxedCommands: false,
     filesystem: {
       allowManagedReadPathsOnly: true,
-      allowRead: [job.execution_cwd, tempPath(job.job_id)],
-      allowWrite: [job.execution_cwd, tempPath(job.job_id)],
+      allowRead,
+      allowWrite: [job.execution_cwd, tempRoot],
       denyRead: [
         job.cwd,
+        tmpdir(),
         home,
         path.join(home, ".secrets"),
         path.join(home, ".ssh"),
         path.join(home, ".codex"),
         path.join(home, ".claude.json"),
         path.join(home, ".gemini")
-      ],
+      ].filter((root) => !rootIsAllowedRead(root, allowRead)),
       denyWrite: [
         job.cwd,
+        ...job.additional_directories,
         jobsRoot(),
         path.join(home, ".secrets"),
         path.join(home, ".ssh"),
@@ -258,6 +280,10 @@ function sandboxForJob(job: JobRecord): ClaudeSandboxSettings {
       ]
     }
   };
+}
+
+function rootIsAllowedRead(root: string, allowRead: string[]): boolean {
+  return allowRead.some((allowed) => isInside(allowed, root));
 }
 
 function summarizeMessage(message: unknown): {

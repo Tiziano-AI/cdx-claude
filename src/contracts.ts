@@ -7,12 +7,24 @@ export const JobIdSchema = z.string().regex(/^claude-\d{8}-\d{9}-[0-9a-f]{8}$/, 
 export const AgentRoleNameSchema = z.string().regex(/^[a-z][a-z0-9_]*$/, "agent_role must be a packaged delegate role name");
 export const DEFAULT_SDK_USAGE_GUARD_USD = 25;
 export const MAX_SDK_USAGE_GUARD_USD = 100;
+export const MAX_ADDITIONAL_DIRECTORIES = 8;
 
 export type JobMode = z.infer<typeof JobModeSchema>;
 export type JobStatus = z.infer<typeof JobStatusSchema>;
 
+const DirectoryFingerprintSchema = z.object({
+  path: z.string().min(1),
+  device: z.string().min(1),
+  inode: z.string().min(1)
+});
+
+const PathStringSchema = z.string().min(1).refine((value) => !/[\u0000-\u001F\u007F]/u.test(value), "paths must not contain control characters");
+
 export const StartRequestSchema = z.object({
-  cwd: z.string().min(1).refine((value) => path.isAbsolute(value), "cwd must be an absolute path"),
+  cwd: PathStringSchema.refine((value) => path.isAbsolute(value), "cwd must be an absolute path"),
+  additional_directories: z.array(
+    PathStringSchema.refine((value) => path.isAbsolute(value), "additional_directories entries must be absolute paths")
+  ).max(MAX_ADDITIONAL_DIRECTORIES).default([]),
   prompt: z.string().min(1),
   mode: JobModeSchema,
   agent_role: AgentRoleNameSchema,
@@ -64,6 +76,8 @@ export const JobRecordSchema = z.object({
   status: JobStatusSchema,
   cwd: z.string().min(1),
   execution_cwd: z.string().min(1),
+  additional_directories: z.array(z.string().min(1)).default([]),
+  additional_directory_fingerprints: z.array(DirectoryFingerprintSchema).default([]),
   created_at: z.string(),
   updated_at: z.string(),
   prompt: z.string().min(1),
@@ -92,8 +106,12 @@ export const JobRecordSchema = z.object({
   sandbox_canary: z.boolean().optional(),
   sandbox_canary_parent_probe_path: z.string().min(1).optional(),
   sandbox_canary_tmp_probe_path: z.string().min(1).optional(),
+  sandbox_canary_tmp_read_path: z.string().min(1).optional(),
   sandbox_canary_worktree_probe_path: z.string().min(1).optional(),
   sandbox_canary_denied_read_path: z.string().min(1).optional(),
+  sandbox_canary_additional_read_path: z.string().min(1).optional(),
+  sandbox_canary_additional_write_path: z.string().min(1).optional(),
+  sandbox_canary_env_nonce: z.string().min(1).optional(),
   error: z.string().min(1).optional()
 });
 
@@ -104,6 +122,7 @@ export const JobViewSchema = z.object({
   status: JobStatusSchema,
   cwd: z.string().min(1),
   execution_cwd: z.string().min(1),
+  additional_directories: z.array(z.string().min(1)).default([]),
   created_at: z.string(),
   updated_at: z.string(),
   prompt: z.string().min(1),
@@ -124,8 +143,11 @@ export const JobViewSchema = z.object({
   sandbox_canary: z.boolean().optional(),
   sandbox_canary_parent_probe_path: z.string().min(1).optional(),
   sandbox_canary_tmp_probe_path: z.string().min(1).optional(),
+  sandbox_canary_tmp_read_path: z.string().min(1).optional(),
   sandbox_canary_worktree_probe_path: z.string().min(1).optional(),
   sandbox_canary_denied_read_path: z.string().min(1).optional(),
+  sandbox_canary_additional_read_path: z.string().min(1).optional(),
+  sandbox_canary_additional_write_path: z.string().min(1).optional(),
   error: z.string().min(1).optional()
 });
 
@@ -137,7 +159,9 @@ export const ReceiptSchema = z.object({
   exported_diff: z.boolean().default(false)
 });
 
-export type StartRequest = z.infer<typeof StartRequestSchema>;
+export type StartRequest = z.input<typeof StartRequestSchema>;
+export type NormalizedStartRequest = z.output<typeof StartRequestSchema>;
+export type DirectoryFingerprint = z.infer<typeof DirectoryFingerprintSchema>;
 export type CleanupRequest = z.infer<typeof CleanupRequestSchema>;
 export type SandboxCanaryRequest = z.infer<typeof SandboxCanaryRequestSchema>;
 export type EventRecord = z.infer<typeof EventRecordSchema>;
@@ -203,7 +227,13 @@ export interface SandboxCanaryProof {
   denied_read_nonce_absent: boolean;
   parent_write_absent: boolean;
   tmp_write_absent: boolean;
+  tmp_read_nonce_absent: boolean;
   worktree_write_present: boolean;
+  additional_read_nonce_present: boolean;
+  additional_write_absent: boolean;
+  env_canary_parent_injected: boolean;
+  env_canary_worker_absent: boolean;
+  env_canary_nonce_absent: boolean;
   worker_token_leaked: boolean;
   paths: SandboxCanaryProofPaths;
 }
@@ -211,8 +241,11 @@ export interface SandboxCanaryProof {
 export interface SandboxCanaryProofPaths {
   parent_probe_path: string;
   tmp_probe_path: string;
+  tmp_denied_read_path: string;
   worktree_probe_path: string;
   denied_read_path: string;
+  additional_read_path: string;
+  additional_write_path: string;
 }
 
 export interface ResponseMeta {
