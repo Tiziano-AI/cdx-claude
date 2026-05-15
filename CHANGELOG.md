@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.8
+
+- Restricts the sandbox canary `CANARY_ENV_LEAK` failure marker to raw tool-result content so negated final prose does not falsely fail a canary whose environment nonce stays scrubbed.
+- Keeps secret and nonce leak detection fail-closed across all public result and event text.
+
+## 0.1.7
+
+- Corrects the first canary verifier false positive by excluding prompt and assistant tool-command text from marker evidence while preserving nonce and worker-identity leak scans.
+
+## 0.1.6
+
+- Adds optional `additional_directories` as normalized, bounded, read-only Claude context roots while keeping `cwd` singular as the execution, git, and worktree authority.
+- Carries additional-directory scope through request admission, MCP schema, job projections, permission gates, Claude SDK options, autonomous sandbox read/write lists, docs, and proof scripts.
+- Extends sandbox canary proof with additional-directory read allowance and write denial evidence.
+
 ## 0.1.5
 
 - Makes `pnpm release:preflight` post-publish aware: once the exact package version exists on npm, the immutable registry identity satisfies the required package-publication row instead of rerunning `npm publish --dry-run` against an already-published version.

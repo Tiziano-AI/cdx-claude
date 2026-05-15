@@ -83,6 +83,7 @@ export async function maybeSandboxCanaryProof(job: JobRecord, resultMarkdown: st
   const events = toPublicEvents(await tailEvents(job.job_id, 500));
   const allPublicText = `${resultMarkdown}\n${JSON.stringify(events)}`;
   const observedOutputText = sandboxCanaryObservedOutputText(resultMarkdown, events);
+  const toolOutputText = sandboxCanaryToolOutputText(events);
   const markers = sandboxCanaryMarkers();
   const missing = markers.filter((marker) => !observedOutputText.includes(marker));
   const paths = sandboxCanaryProofPaths(job);
@@ -102,7 +103,7 @@ export async function maybeSandboxCanaryProof(job: JobRecord, resultMarkdown: st
   const envCanaryWorkerAbsent = envBoundary.worker_absent;
   const envCanaryNonceAbsent = envCanaryNonce.length > 0 &&
     !allPublicText.includes(envCanaryNonce) &&
-    !observedOutputText.includes("CANARY_ENV_LEAK");
+    !toolOutputText.includes("CANARY_ENV_LEAK");
   const workerTokenLeaked = workerIdentityLeaked(allPublicText);
   const proof: SandboxCanaryProof = {
     ok: job.status === "completed" &&
@@ -148,6 +149,14 @@ function sandboxCanaryObservedOutputText(resultMarkdown: string, events: EventRe
   return chunks.join("\n");
 }
 
+function sandboxCanaryToolOutputText(events: EventRecord[]): string {
+  const chunks: string[] = [];
+  for (const event of events) {
+    appendToolOutputText(event.metadata, chunks, false);
+  }
+  return chunks.join("\n");
+}
+
 function appendObservedMetadataText(value: unknown, chunks: string[]): void {
   if (Array.isArray(value)) {
     for (const item of value) {
@@ -179,6 +188,33 @@ function appendObservedMetadataText(value: unknown, chunks: string[]): void {
   }
   for (const nested of Object.values(value)) {
     appendObservedMetadataText(nested, chunks);
+  }
+}
+
+function appendToolOutputText(value: unknown, chunks: string[], insideToolOutput: boolean): void {
+  if (typeof value === "string") {
+    if (insideToolOutput) {
+      chunks.push(value);
+    }
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      appendToolOutputText(item, chunks, insideToolOutput);
+    }
+    return;
+  }
+  if (!isPlainRecord(value)) {
+    return;
+  }
+  if (value.tool_use_result !== undefined) {
+    appendToolOutputText(value.tool_use_result, chunks, true);
+  }
+  if (value.type === "tool_result") {
+    appendToolOutputText(value.content, chunks, true);
+  }
+  for (const nested of Object.values(value)) {
+    appendToolOutputText(nested, chunks, insideToolOutput);
   }
 }
 

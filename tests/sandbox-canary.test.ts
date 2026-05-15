@@ -42,6 +42,37 @@ test("sandbox canary proof requires markers and side effects", async () => {
     await writeFile(tmpDeniedRead, "tmp-nonce-value\n", "utf8");
     await writeFile(additionalRead, "additional-nonce\n", "utf8");
     await writeFile(worktreeProbe, "ok\n", "utf8");
+    const initializePassingCanaryJob = async (jobId: string): Promise<JobRecord> => {
+      const candidate = jobRecord({
+        job_id: jobId,
+        sandbox_canary_denied_read_path: deniedRead,
+        sandbox_canary_parent_probe_path: parentProbe,
+        sandbox_canary_tmp_probe_path: tmpProbe,
+        sandbox_canary_tmp_read_path: tmpDeniedRead,
+        sandbox_canary_worktree_probe_path: worktreeProbe,
+        sandbox_canary_additional_read_path: additionalRead,
+        sandbox_canary_additional_write_path: additionalWrite,
+        sandbox_canary_env_nonce: "env-nonce-value"
+      });
+      await initializeJob(candidate);
+      await appendEvent(candidate.job_id, "sandbox_canary_env_boundary", "Sandbox canary environment boundary checked", {
+        parent_canary_env_injected: true,
+        worker_canary_env_absent: true
+      });
+      await appendEvent(candidate.job_id, "assistant", "assistant", {
+        message: {
+          message: {
+            content: [
+              {
+                type: "text",
+                text: `${sandboxCanaryMarkers().join(" ")} additional-nonce`
+              }
+            ]
+          }
+        }
+      });
+      return candidate;
+    };
     const job = jobRecord({
       sandbox_canary_denied_read_path: deniedRead,
       sandbox_canary_parent_probe_path: parentProbe,
@@ -101,6 +132,57 @@ test("sandbox canary proof requires markers and side effects", async () => {
     assert.equal(proof?.env_canary_worker_absent, true);
     assert.equal(proof?.env_canary_nonce_absent, true);
 
+    const negatedFinalProse = await maybeSandboxCanaryProof(job, "all markers present CANARY_ENV_LEAK - not triggered");
+    assert.equal(negatedFinalProse?.ok, true);
+    assert.equal(negatedFinalProse?.env_canary_nonce_absent, true);
+
+    await appendEvent(job.job_id, "user", "user", {
+      message: {
+        message: {
+          content: [
+            {
+              type: "text",
+              text: "CANARY_ENV_LEAK"
+            }
+          ]
+        }
+      }
+    });
+    const textOnlyLeakToken = await maybeSandboxCanaryProof(job, "all markers present");
+    assert.equal(textOnlyLeakToken?.ok, true);
+    assert.equal(textOnlyLeakToken?.env_canary_nonce_absent, true);
+
+    const publicNonceLeak = await maybeSandboxCanaryProof(job, "all markers present env-nonce-value");
+    assert.equal(publicNonceLeak?.ok, false);
+    assert.equal(publicNonceLeak?.env_canary_nonce_absent, false);
+
+    const contentOnlyLeakJob = await initializePassingCanaryJob("claude-20260510-120000000-aabbccdd");
+    await appendEvent(contentOnlyLeakJob.job_id, "user", "user", {
+      message: {
+        message: {
+          content: [
+            {
+              type: "tool_result",
+              content: "CANARY_ENV_LEAK"
+            }
+          ]
+        }
+      }
+    });
+    const contentOnlyLeak = await maybeSandboxCanaryProof(contentOnlyLeakJob, "all markers present");
+    assert.equal(contentOnlyLeak?.ok, false);
+    assert.equal(contentOnlyLeak?.env_canary_nonce_absent, false);
+
+    const stringToolUseResultLeakJob = await initializePassingCanaryJob("claude-20260510-120000000-bbccddee");
+    await appendEvent(stringToolUseResultLeakJob.job_id, "user", "user", {
+      message: {
+        tool_use_result: "CANARY_ENV_LEAK"
+      }
+    });
+    const stringToolUseResultLeak = await maybeSandboxCanaryProof(stringToolUseResultLeakJob, "all markers present");
+    assert.equal(stringToolUseResultLeak?.ok, false);
+    assert.equal(stringToolUseResultLeak?.env_canary_nonce_absent, false);
+
     await appendEvent(job.job_id, "user", "user", {
       message: {
         message: {
@@ -119,6 +201,19 @@ test("sandbox canary proof requires markers and side effects", async () => {
     });
     const observedLeak = await maybeSandboxCanaryProof(job, "all markers present");
     assert.equal(observedLeak?.env_canary_nonce_absent, false);
+
+    const stderrLeakJob = await initializePassingCanaryJob("claude-20260510-120000000-fedcba98");
+    await appendEvent(stderrLeakJob.job_id, "assistant", "assistant", {
+      message: {
+        tool_use_result: {
+          stdout: "",
+          stderr: "CANARY_ENV_LEAK"
+        }
+      }
+    });
+    const stderrLeak = await maybeSandboxCanaryProof(stderrLeakJob, "all markers present");
+    assert.equal(stderrLeak?.ok, false);
+    assert.equal(stderrLeak?.env_canary_nonce_absent, false);
 
     await writeFile(parentProbe, "bad\n", "utf8");
     await writeFile(additionalWrite, "bad\n", "utf8");
